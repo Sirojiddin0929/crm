@@ -8,6 +8,17 @@ body {
   font-family: 'Nunito', sans-serif;
   background: #F4F4F8;
   margin: 0;
+  transition: background-color .2s ease, color .2s ease;
+}
+
+html.dark body {
+  background: #0B0B0F;
+  color: #E5E7EB;
+}
+
+#root {
+  min-height: 100vh;
+  background: inherit;
 }
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -26,11 +37,11 @@ body {
   @apply flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-700 rounded-lg transition-colors;
 }
 .btn-secondary {
-  @apply flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-600 rounded-lg transition-colors;
+  @apply flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-600 rounded-lg transition-colors dark:bg-[#1a1a2e] dark:border-[#2d2d44] dark:hover:bg-[#222238] dark:text-gray-200;
 }
 
 .card {
-  @apply bg-white rounded-xl border border-gray-100 shadow-sm;
+  @apply bg-white rounded-xl border border-gray-100 shadow-sm dark:bg-[#171722] dark:border-[#2a2a3c] dark:text-gray-100;
 }
 
 .badge {
@@ -44,10 +55,10 @@ body {
 .badge-gray { @apply bg-gray-100 text-gray-600; }
 
 .table-header {
-  @apply px-4 py-3 text-left text-xs font-700 text-gray-400 uppercase tracking-wider bg-gray-50;
+  @apply px-4 py-3 text-left text-xs font-700 text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-[#1f1f2d] dark:text-gray-300;
 }
 .table-cell {
-  @apply px-4 py-3 text-sm text-gray-700 border-b border-gray-50;
+  @apply px-4 py-3 text-sm text-gray-700 border-b border-gray-50 dark:text-gray-200 dark:border-[#2a2a3c];
 }
 
 input, select, textarea {

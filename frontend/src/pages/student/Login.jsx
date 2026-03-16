@@ -81,7 +81,7 @@ export default function Login() {
           <div className="w-20 h-20 rounded-2xl bg-yellow-400 flex items-center justify-center mx-auto mb-6">
             <span className="text-3xl font-900 text-[#1E1B2E]">E</span>
           </div>
-          <h1 className="text-4xl font-900 text-white mb-3">EduCoin</h1>
+          <h1 className="text-4xl font-900 text-white mb-3">ZiyoNex</h1>
           <p className="text-gray-400 text-base font-500 max-w-xs">O'quvchi paneli — bilimingizni oshiring va yutuqlarga erishing</p>
           <div className="mt-10 flex flex-col gap-3 max-w-xs mx-auto">
             {['📖 Dars materiallarini ko\'ring', '📝 Vazifalarni topshiring', '✅ Davomatingizni kuzating', '⭐ O\'qituvchilarga baho bering'].map(t => (

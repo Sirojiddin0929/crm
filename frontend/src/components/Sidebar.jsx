@@ -34,20 +34,19 @@ export default function Sidebar() {
 
   return (
     <aside
-      className="flex flex-col h-screen sticky top-0 transition-all duration-300 z-50"
+      className="flex flex-col h-screen sticky top-0 transition-all duration-300 z-50 bg-[#1E1B2E] dark:bg-black"
       style={{
         width: collapsed ? 68 : 210,
-        background: '#1E1B2E',
         minWidth: collapsed ? 68 : 210,
       }}
     >
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 py-4 border-b border-white/10">
         <div className="w-8 h-8 rounded-lg bg-yellow-400 flex items-center justify-center flex-shrink-0">
-          <span className="text-sm font-900 text-[#1E1B2E]">E</span>
+          <span className="text-sm font-900 text-[#1E1B2E]">Z</span>
         </div>
         {!collapsed && (
-          <span className="text-white font-800 text-base tracking-tight">EduCoin</span>
+          <span className="text-white font-800 text-base tracking-tight">ZiyoNex</span>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}

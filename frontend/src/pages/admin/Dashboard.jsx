@@ -33,7 +33,7 @@ export default function Dashboard() {
     <div className="fade-in">
       <PageHeader
         title={`Salom, ${user?.fullName?.split(' ')[0] || 'Admin'} 👋`}
-        subtitle="EduCoin platformasiga xush kelibsiz!"
+        subtitle="ZiyoNex platformasiga xush kelibsiz!"
       />
 
       {/* Stat cards */}

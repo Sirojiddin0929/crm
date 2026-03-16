@@ -7,6 +7,7 @@ import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 const SELECT_ATTENDANCE = {
   id: true,
   lessonId: true,
+  studentId: true,
   isPresent: true,
   created_at: true,
   updated_at: true,
@@ -15,6 +16,16 @@ const SELECT_ATTENDANCE = {
   teacher: { select: { id: true, fullName: true } },
   user: { select: { id: true, fullName: true } },
 };
+
+function keepLatestAttendance(records: Array<{ studentId: number }>) {
+  const seen = new Set<number>();
+
+  return records.filter(record => {
+    if (seen.has(record.studentId)) return false;
+    seen.add(record.studentId);
+    return true;
+  });
+}
 
 @Injectable()
 export class AttendanceService {
@@ -26,6 +37,12 @@ export class AttendanceService {
 
     const student = await this.prisma.student.findUnique({ where: { id: dto.studentId } });
     if (!student) throw new NotFoundException("O'quvchi topilmadi");
+
+    const existing = await this.prisma.attendance.findFirst({
+      where: { lessonId: dto.lessonId, studentId: dto.studentId },
+      select: { id: true },
+    });
+    if (existing) throw new BadRequestException("Bu dars uchun davomat allaqachon saqlangan");
 
     const attendance = await this.prisma.attendance.create({
       data: {
@@ -44,6 +61,12 @@ export class AttendanceService {
       throw new BadRequestException("Davomat yozuvlari bo'sh bo'lishi mumkin emas");
 
     const lessonIds = [...new Set(dto.records.map(r => r.lessonId))];
+
+    const existingCount = await this.prisma.attendance.count({
+      where: { lessonId: { in: lessonIds } },
+    });
+    if (existingCount > 0)
+      throw new BadRequestException("Bu dars uchun davomat allaqachon saqlangan va qayta o'zgartirib bo'lmaydi");
 
     const lessons = await this.prisma.lesson.findMany({
       where: { id: { in: lessonIds } },
@@ -82,11 +105,13 @@ export class AttendanceService {
     const lesson = await this.prisma.lesson.findUnique({ where: { id: lessonId } });
     if (!lesson) throw new NotFoundException('Dars topilmadi');
 
-    return this.prisma.attendance.findMany({
+    const records = await this.prisma.attendance.findMany({
       where: { lessonId },
       select: SELECT_ATTENDANCE,
-      orderBy: { created_at: 'asc' },
+      orderBy: [{ updated_at: 'desc' }, { id: 'desc' }],
     });
+
+    return keepLatestAttendance(records);
   }
 
   async findByStudent(studentId: number) {
@@ -114,12 +139,6 @@ export class AttendanceService {
     const record = await this.prisma.attendance.findUnique({ where: { id } });
     if (!record) throw new NotFoundException(`ID: ${id} bo'yicha davomat topilmadi`);
 
-    const attendance = await this.prisma.attendance.update({
-      where: { id },
-      data: { isPresent: dto.isPresent },
-      select: SELECT_ATTENDANCE,
-    });
-
-    return { message: "Davomat yangilandi", attendance };
+    throw new BadRequestException("Davomat saqlangandan keyin uni tahrirlab bo'lmaydi");
   }
 }

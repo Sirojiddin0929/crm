@@ -1,6 +1,6 @@
 # EduCRM Admin Panel
 
-**EduCoin dizaynidagi** professional admin panel.
+**ZiyoNex dizaynidagi** professional admin panel.
 
 ## O'rnatish
 
@@ -39,7 +39,7 @@ Backend: `http://localhost:4000`
 
 ## Dizayn
 
-EduCoin platformasi uslubida:
+ZiyoNex platformasi uslubida:
 - `#1E1B2E` — qora sidebar
 - `#7C3AED` — primary purple
 - Barcha formlar right-side drawer sifatida

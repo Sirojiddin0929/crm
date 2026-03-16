@@ -81,7 +81,7 @@ export default function Login() {
           <div className="w-20 h-20 rounded-2xl bg-yellow-400 flex items-center justify-center mx-auto mb-6">
             <span className="text-3xl font-900 text-[#1E1B2E]">E</span>
           </div>
-          <h1 className="text-4xl font-900 text-white mb-3">EduCoin</h1>
+          <h1 className="text-4xl font-900 text-white mb-3">ZiyoNex</h1>
           <p className="text-gray-400 text-base font-500 max-w-xs">O'qituvchi paneli — darslar, davomat va vazifalarni boshqaring</p>
           <div className="mt-10 flex flex-col gap-3 max-w-xs mx-auto">
             {['📚 Guruhlaringizni boshqaring', '✅ Davomat belgilang', '📝 Vazifa bering va baholang', '🎥 Video darslar yuklang'].map(t => (
@@ -98,7 +98,7 @@ export default function Login() {
             <div className="w-9 h-9 rounded-xl bg-[#1E1B2E] flex items-center justify-center">
               <span className="text-yellow-400 font-900 text-lg">E</span>
             </div>
-            <span className="text-xl font-800 text-gray-800">EduCoin</span>
+            <span className="text-xl font-800 text-gray-800">ZiyoNex</span>
           </div>
           {/* Role switcher */}
           <div className="flex p-1 bg-gray-100 rounded-xl mb-6">

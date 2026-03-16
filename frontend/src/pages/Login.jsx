@@ -31,9 +31,9 @@ export default function LoginPage() {
       <div className="hidden lg:flex flex-1 items-center justify-center" style={{ background: '#1E1B2E' }}>
         <div className="text-center">
           <div className="w-20 h-20 rounded-2xl bg-yellow-400 flex items-center justify-center mx-auto mb-6">
-            <span className="text-3xl font-900 text-[#1E1B2E]">E</span>
+            <span className="text-3xl font-900 text-[#1E1B2E]">Z</span>
           </div>
-          <h1 className="text-4xl font-900 text-white mb-3">EduCoin</h1>
+          <h1 className="text-4xl font-900 text-white mb-3">ZiyoNex</h1>
           <p className="text-gray-400 text-base font-500 max-w-xs">
             O'quv markazini boshqarish uchun zamonaviy platforma
           </p>
@@ -54,7 +54,7 @@ export default function LoginPage() {
             <div className="w-9 h-9 rounded-xl bg-[#1E1B2E] flex items-center justify-center">
               <span className="text-yellow-400 font-900 text-lg">E</span>
             </div>
-            <span className="text-xl font-800 text-gray-800">EduCoin</span>
+            <span className="text-xl font-800 text-gray-800">ZiyoNex</span>
           </div>
 
           {/* Role switcher */}
