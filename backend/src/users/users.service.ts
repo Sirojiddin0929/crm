@@ -132,10 +132,10 @@ export class UsersService {
 
   async updatePhoto(id: number, filename: string) {
     await this.findOne(id);
-
+    const Url = process.env.APP_URL ?? 'http://localhost:4000'
     const user = await this.prisma.user.update({
       where: { id },
-      data: { photo: filename },
+      data: { photo: `${Url}/uploads/${filename}` },
       select: { id: true, fullName: true, photo: true },
     });
 

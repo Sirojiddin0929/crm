@@ -8,7 +8,14 @@ export class JwtAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
-    const token = request.cookies?.['access_token'];
+    let token = request.cookies?.['access_token'];
+
+    if (!token) {
+      const authHeader = request.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+      }
+    }
 
     if (!token) {
       throw new UnauthorizedException('Token is not exist, in advance , please log in');

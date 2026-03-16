@@ -17,8 +17,7 @@ const SELECT_TEACHER = {
   experience: true,
   status: true,
   created_at: true,
-  updated_at: true,
-  role:true
+  updated_at: true
 };
 
 @Injectable()
@@ -212,10 +211,10 @@ export class TeachersService {
 
   async updatePhoto(id: number, filename: string) {
     await this.findOne(id);
-
+    const Url = process.env.APP_URL ?? 'http://localhost:4000';
     const teacher = await this.prisma.teacher.update({
       where: { id },
-      data: { photo: filename },
+      data: { photo: `${Url}/uploads/${filename}` },
       select: { id: true, fullName: true, photo: true },
     });
 

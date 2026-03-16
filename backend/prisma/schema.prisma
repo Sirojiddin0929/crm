@@ -62,6 +62,7 @@ model Student {
   StudentAttendence Attendance[]
   HomeworkResponse  HomeworkResponse[]
   HomeworkResult    HomeworkResult[]
+  Rating            Rating[]
   StudentGroups     StudentGroup[]
 }
 
@@ -134,6 +135,8 @@ model Lesson {
   teacherId      Int?
   created_at     DateTime      @default(now())
   updated_at     DateTime      @updatedAt
+  date           DateTime?
+  description    String?
   lesson         Attendance[]
   lessonHomework Homework[]
   group          Group         @relation(fields: [groupId], references: [id])
@@ -180,6 +183,7 @@ model LessonVideo {
   lessonId   Int
   userId     Int?
   teacherId  Int?
+  size       Int?
   title      String
   file       String
   created_at DateTime @default(now())
@@ -192,11 +196,12 @@ model HomeworkResponse {
   id         Int                   @id @default(autoincrement())
   homeworkId Int
   studentId  Int
-  title      String
+  title      String?
   file       String?
-  status     HomeworkStatusStudent
+  status     HomeworkStatusStudent @default(PENDING)
   created_at DateTime              @default(now())
   updated_at DateTime              @updatedAt
+  url        String?
   homework   Homework              @relation(fields: [homeworkId], references: [id])
   student    Student               @relation(fields: [studentId], references: [id])
 }
@@ -223,10 +228,15 @@ model Rating {
   id         Int      @id @default(autoincrement())
   teacherId  Int
   lessonId   Int
-  score      Int
+  score      Float
   created_at DateTime @default(now())
+  comment    String?
+  studentId  Int?
   lesson     Lesson   @relation(fields: [lessonId], references: [id])
+  student    Student? @relation(fields: [studentId], references: [id])
   teacher    Teacher  @relation(fields: [teacherId], references: [id])
+
+  @@unique([studentId, lessonId])
 }
 
 enum Status {
@@ -263,9 +273,10 @@ enum HomeworkStatus {
 }
 
 enum HomeworkStatusStudent {
-  COMPLETED
-  MISSED
-  DELAY
+  PENDING
+  CHECKED
+  RETURNED
+  REJECTED
 }
 
 enum Role {
@@ -276,3 +287,8 @@ enum Role {
   MANAGEMENT
   ADMINSTRATOR
 }
+
+
+
+
+

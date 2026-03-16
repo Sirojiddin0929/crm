@@ -1,5 +1,6 @@
 import {
   Body,
+  Req,
   Res,
   Controller,
   Delete,
@@ -12,6 +13,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiCookieAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
@@ -23,7 +25,9 @@ import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { StudentsService } from './students.service';
 import { LoginDto } from 'src/auth/dto/login.dto';
-import type { Response } from 'express';
+import { ForgotPasswordDto } from 'src/auth/dto/forgot-password.dto';
+import { ResetPasswordDto } from 'src/auth/dto/reset-password.dto';
+import { ChangePasswordDto } from 'src/auth/dto/change-password.dto';
 
 @ApiTags('Students')
 @Controller('students')
@@ -54,6 +58,27 @@ export class StudentsController {
     return result
   }
 
+  @Post('forgot-password')
+  @ApiOperation({summary:"Parol tiklash uchun emailga havola yuborish"})
+  forgotPassword(@Body() dto:ForgotPasswordDto){
+    return this.studentsService.forgotPassword(dto)
+  }
+
+  @Post('reset-password')
+  @ApiOperation({summary:'Token orqali yangi parol ornatish'})
+  resetPassword(@Body() dto:ResetPasswordDto){
+    return this.studentsService.resetPassword(dto)
+  }
+
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({summary:'Tizimga kirgan holda eski parolni yangilash'})
+  changePassword(@Body() dto: ChangePasswordDto, @Req() req: Request) {
+    const { sub, type } = (req as any).user as { sub: number; type: string };
+    return this.studentsService.changePassword(sub, type, dto);
+  }
+  
+
   @Get()
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
   @ApiOperation({ summary: "Barcha o'quvchilarni ko'rish" })
@@ -69,7 +94,7 @@ export class StudentsController {
   }
 
   @Get(':id/groups')
-  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
+  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR, Role.STUDENT)
   @ApiOperation({ summary: "O'quvchining guruhlari" })
   getGroups(@Param('id', ParseIntPipe) id: number) {
     return this.studentsService.getGroups(id);
