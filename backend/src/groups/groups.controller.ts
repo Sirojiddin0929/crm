@@ -20,7 +20,7 @@ import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { AddStudentDto } from './dto/add-student.dto';
 
-@ApiTags('Groups')
+@ApiTags('Groups')  
 @Controller('groups')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiCookieAuth('access_token')

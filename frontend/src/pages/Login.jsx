@@ -58,11 +58,11 @@ export default function LoginPage() {
           </div>
 
           {/* Role switcher */}
-          <div className="flex p-1 bg-gray-100 rounded-xl mb-6">
+          {/* <div className="flex p-1 bg-gray-100 rounded-xl mb-6">
             <button onClick={() => navigate('/login')} className="flex-1 py-1.5 text-xs font-700 rounded-lg bg-white shadow text-gray-800">Admin</button>
             <button onClick={() => navigate('/teacher/login')} className="flex-1 py-1.5 text-xs font-700 rounded-lg text-gray-500 hover:text-gray-800 transition-colors">O'qituvchi</button>
             <button onClick={() => navigate('/student/login')} className="flex-1 py-1.5 text-xs font-700 rounded-lg text-gray-500 hover:text-gray-800 transition-colors">O'quvchi</button>
-          </div>
+          </div> */}
 
           <h2 className="text-2xl font-900 text-gray-800 mb-1">Admin kirish</h2>
           <p className="text-gray-400 text-sm font-500 mb-7">Tizimga kirish uchun ma'lumotlarni kiriting</p>

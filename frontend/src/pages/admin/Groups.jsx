@@ -33,19 +33,31 @@ const DAY_MAP = {
 /* ─── generateLessonDates ──────────────────────── */
 function generateLessonDates(group, courseDurationMonth, courseDurationLesson, existingLessons = []) {
   if (!group?.startDate || !group?.weekDays?.length) return [];
-  const start = dayjs(group.startDate);
-  const end   = courseDurationMonth ? start.add(courseDurationMonth, 'month') : start.add(3, 'month');
+  const today = dayjs().startOf('day')
+  const start = dayjs(group.startDate).startOf('day')
+
+  const effectiveStart = today.isAfter(start) ? today :start
+  const end   = courseDurationMonth ? effectiveStart.add(courseDurationMonth, 'month') : effectiveStart.add(3, 'month');
   const usedDates = new Set(existingLessons.filter(l => l.date).map(l => dayjs(l.date).format('YYYY-MM-DD')));
   const [h, m]    = (group.startTime || '09:00').split(':').map(Number);
   const endMin    = h * 60 + m + (Number(courseDurationLesson) || 90);
   const timeRange = `${group.startTime || '09:00'} – ${String(Math.floor(endMin/60)).padStart(2,'0')}:${String(endMin%60).padStart(2,'0')}`;
   const results = [];
-  let current = start.clone();
+  let current = effectiveStart.clone();
   while (current.isBefore(end)) {
     const matchedDay = group.weekDays.find(d => DAY_MAP[d] === current.day());
     if (matchedDay) {
       const dateStr = current.format('YYYY-MM-DD');
-      if (!usedDates.has(dateStr)) results.push({ date: dateStr, label: `${current.format('DD.MM.YYYY')} (${DAYS_UZ[matchedDay]}) — ${timeRange}` });
+
+      if(current.isSame(today,'day') || current.isAfter(today)){
+        if(!usedDates.has(dateStr)){
+          results.push({
+            date:dateStr,
+            label:`${current.format('DD.MM.YYYY')} (${DAYS_UZ[matchedDay]})-${timeRange}`
+          })
+        }
+      }
+
     }
     current = current.add(1, 'day');
   }
@@ -689,7 +701,6 @@ export default function Groups() {
                               <div className="flex items-center gap-1.5">
                                 <button onClick={() => openAttendanceModal(lesson)} className="btn-secondary text-xs px-3 py-1">Davomat</button>
                                 <button onClick={() => openLessonEdit(lesson)} className="w-7 h-7 rounded-md bg-blue-50 text-blue-500 hover:bg-blue-100 flex items-center justify-center" title="Tahrirlash"><Edit2 size={12}/></button>
-                                <button onClick={() => setLessonDeleteId(lesson.id)} className="w-7 h-7 rounded-md bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center" title="O'chirish"><Trash2 size={12}/></button>
                               </div>
                             </div>
                           </div>

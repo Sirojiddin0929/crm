@@ -5,7 +5,7 @@ import {IsEmail,IsInt,IsNotEmpty,IsString,Min,} from 'class-validator';
 export class CreateTeacherDto {
   @ApiProperty({ example: 'Jasur Toshmatov' })
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({message:'Kirib ket'})
   fullName: string;
 
   @ApiProperty({ example: 'jasur@gmail.com' })

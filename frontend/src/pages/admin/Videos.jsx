@@ -546,7 +546,7 @@ export default function Videos() {
               </div>
               <button
                 onClick={() => activeVideo.fileUrl && window.open(activeVideo.fileUrl, '_blank')}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-primary text-xs font-600 text-primary"
+                className="flex items-center gap-1 px-3 mr-2 mt-2 py-1.5 rounded-lg border border-primary text-xs font-600 text-primary"
               >
                 <Play size={12} /> Videoni ochish
               </button>

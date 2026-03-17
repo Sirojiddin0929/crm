@@ -120,6 +120,7 @@ export class TeachersService {
 
   async findAll() {
     return this.prisma.teacher.findMany({
+      where: { status: 'ACTIVE' },
       select: SELECT_TEACHER,
       orderBy: { created_at: 'desc' },
     });

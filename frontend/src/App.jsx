@@ -210,8 +210,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/admin" replace /> : <LoginPage />} />
-      <Route path="/teacher/login" element={teacherUser ? <Navigate to="/teacher/dashboard" replace /> : <TeacherLogin />} />
-      <Route path="/student/login" element={studentUser ? <Navigate to="/student/dashboard" replace /> : <StudentLogin />} />
+      {/* <Route path="/teacher/login" element={teacherUser ? <Navigate to="/teacher/dashboard" replace /> : <TeacherLogin />} />
+      <Route path="/student/login" element={studentUser ? <Navigate to="/student/dashboard" replace /> : <StudentLogin />} /> */}
 
       <Route path="/admin" element={<Protected><Dashboard /></Protected>} />
       <Route path="/admin/students" element={<Protected><Students /></Protected>} />
