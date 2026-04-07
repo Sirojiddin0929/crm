@@ -5,12 +5,15 @@ const StudentAuthContext = createContext(null);
 
 export function StudentAuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('student')); } catch { return null; }
+    try { 
+      const u = JSON.parse(localStorage.getItem('student'));
+      return u?.user ? u.user : u;
+    } catch { return null; }
   });
 
   const login = async (email, password) => {
     const res = await studentAuthAPI.login({ email, password });
-    const u = res.data;
+    const u = res.data.user; // Get nested user object
     setUser(u);
     localStorage.setItem('student', JSON.stringify(u));
     // Clear other roles
@@ -37,7 +40,12 @@ export function StudentAuthProvider({ children }) {
     localStorage.removeItem('student');
   };
 
-  return <StudentAuthContext.Provider value={{ user, login, logout, forgotPassword, resetPassword, changePassword }}>{children}</StudentAuthContext.Provider>;
+  const updateUser = (newData) => {
+    setUser(newData);
+    localStorage.setItem('student', JSON.stringify(newData));
+  };
+
+  return <StudentAuthContext.Provider value={{ user, login, logout, forgotPassword, resetPassword, changePassword, updateUser }}>{children}</StudentAuthContext.Provider>;
 }
 
 export const useStudentAuth = () => useContext(StudentAuthContext);

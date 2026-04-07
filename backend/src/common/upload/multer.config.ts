@@ -39,3 +39,22 @@ export const videoMulterConfig = {
   },
   limits: { fileSize: 500 * 1024 * 1024 }, // 500 MB
 };
+
+export const documentMulterConfig = {
+  storage: sharedStorage,
+  fileFilter: (_req: any, file: Express.Multer.File, cb: any) => {
+    const allowed = [
+      '.jpg', '.jpeg', '.png', '.webp', 
+      '.pdf', '.doc', '.docx', '.ppt', '.pptx', 
+      '.xls', '.xlsx', '.zip', '.rar', '.txt', '.csv'
+    ];
+    if (!allowed.includes(extname(file.originalname).toLowerCase())) {
+      return cb(
+        new BadRequestException('Faqat rasm, pdf, word, excel, ppt, va arxiv (zip/rar) fayllar qabul qilinadi'),
+        false,
+      );
+    }
+    cb(null, true);
+  },
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
+};

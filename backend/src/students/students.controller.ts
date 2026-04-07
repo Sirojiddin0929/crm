@@ -31,12 +31,12 @@ import { ChangePasswordDto } from 'src/auth/dto/change-password.dto';
 
 @ApiTags('Students')
 @Controller('students')
-@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiCookieAuth('access_token')
 export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
   @ApiOperation({ summary: "Yangi o'quvchi qo'shish" })
   create(@Body() dto: CreateStudentDto) {
@@ -80,6 +80,7 @@ export class StudentsController {
   
 
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
   @ApiOperation({ summary: "Barcha o'quvchilarni ko'rish" })
   findAll() {
@@ -87,6 +88,7 @@ export class StudentsController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
   @ApiOperation({ summary: "O'quvchini ID bo'yicha ko'rish (guruhlari bilan)" })
   findOne(@Param('id', ParseIntPipe) id: number) {
@@ -94,6 +96,7 @@ export class StudentsController {
   }
 
   @Get(':id/groups')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR, Role.STUDENT)
   @ApiOperation({ summary: "O'quvchining guruhlari" })
   getGroups(@Param('id', ParseIntPipe) id: number) {
@@ -101,7 +104,8 @@ export class StudentsController {
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR, Role.STUDENT)
   @ApiOperation({ summary: "O'quvchi ma'lumotlarini yangilash" })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -111,6 +115,7 @@ export class StudentsController {
   }
 
   @Patch(':id/photo')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN,Role.STUDENT)
   @UseInterceptors(FileInterceptor('photo', multerConfig))
   @ApiConsumes('multipart/form-data')
@@ -129,6 +134,7 @@ export class StudentsController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @ApiOperation({ summary: "O'quvchini o'chirish (status INACTIVE ga o'tadi)" })
   remove(@Param('id', ParseIntPipe) id: number) {

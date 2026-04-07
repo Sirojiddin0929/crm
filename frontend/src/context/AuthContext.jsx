@@ -5,12 +5,15 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
+    try { 
+      const u = JSON.parse(localStorage.getItem('user'));
+      return u?.user ? u.user : u;
+    } catch { return null; }
   });
 
   const login = async (email, password) => {
     const res = await authAPI.login({ email, password });
-    const u = res.data;
+    const u = res.data.user; // Get nested user object
     setUser(u);
     localStorage.setItem('user', JSON.stringify(u));
     // Clear other roles
@@ -25,7 +28,12 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('user');
   };
 
-  return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>;
+  const updateUser = (newData) => {
+    setUser(newData);
+    localStorage.setItem('user', JSON.stringify(newData));
+  };
+
+  return <AuthContext.Provider value={{ user, login, logout, updateUser }}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => useContext(AuthContext);

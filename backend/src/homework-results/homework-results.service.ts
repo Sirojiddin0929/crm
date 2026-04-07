@@ -8,6 +8,8 @@ const SELECT_RESULT = {
   title: true,
   file: true,
   score: true,
+  xp: true,
+  coin: true,
   status: true,
   homeworkId: true,
   studentId: true,
@@ -16,7 +18,7 @@ const SELECT_RESULT = {
   created_at: true,
   updated_at: true,
   homework: { select: { id: true, title: true, lesson: { select: { id: true, title: true } } } },
-  student: { select: { id: true, fullName: true, email: true } },
+  student: { select: { id: true, fullName: true, email: true, xp: true, coin: true } },
   teacher: { select: { id: true, fullName: true } },
   user: { select: { id: true, fullName: true } },
 };
@@ -42,6 +44,8 @@ export class HomeworkResultsService {
         homeworkId: dto.homeworkId,
         studentId: dto.studentId,
         score: dto.score,
+        xp: dto.xp || 0,
+        coin: dto.coin || 0,
         title: dto.title ?? '',
         status: resultStatus,
         ...(dto.userId ? { userId: dto.userId } : {}),
@@ -55,6 +59,17 @@ export class HomeworkResultsService {
       where: { homeworkId: dto.homeworkId, studentId: dto.studentId },
       data: { status: responseStatus },
     });
+
+    // Increment student XP and Coins
+    if (dto.xp || dto.coin) {
+      await this.prisma.student.update({
+        where: { id: dto.studentId },
+        data: {
+          xp: { increment: dto.xp || 0 },
+          coin: { increment: dto.coin || 0 },
+        },
+      });
+    }
 
     return { message: "Baholash qo'shildi", result };
   }

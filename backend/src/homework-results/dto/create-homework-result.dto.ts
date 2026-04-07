@@ -36,4 +36,18 @@ export class CreateHomeworkResultDto {
   @IsInt()
   @Type(() => Number)
   teacherId?: number;
+
+  @ApiProperty({ example: 5, description: "XP ball" })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  xp?: number;
+
+  @ApiProperty({ example: 10, description: "Kumush (Coins)" })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  coin?: number;
 }

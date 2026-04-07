@@ -5,12 +5,15 @@ const TeacherAuthContext = createContext(null);
 
 export function TeacherAuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('teacher')); } catch { return null; }
+    try { 
+      const u = JSON.parse(localStorage.getItem('teacher'));
+      return u?.user ? u.user : u;
+    } catch { return null; }
   });
 
   const login = async (email, password) => {
     const res = await teachersAPI.login({ email, password });
-    const u = res.data;
+    const u = res.data.user; // Get nested user object
     setUser(u);
     localStorage.setItem('teacher', JSON.stringify(u));
     // Clear other roles
@@ -37,7 +40,12 @@ export function TeacherAuthProvider({ children }) {
     localStorage.removeItem('teacher');
   };
 
-  return <TeacherAuthContext.Provider value={{ user, login, logout, forgotPassword, resetPassword, changePassword }}>{children}</TeacherAuthContext.Provider>;
+  const updateUser = (newData) => {
+    setUser(newData);
+    localStorage.setItem('teacher', JSON.stringify(newData));
+  };
+
+  return <TeacherAuthContext.Provider value={{ user, login, logout, forgotPassword, resetPassword, changePassword, updateUser }}>{children}</TeacherAuthContext.Provider>;
 }
 
 export const useTeacherAuth = () => useContext(TeacherAuthContext);

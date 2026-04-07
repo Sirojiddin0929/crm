@@ -172,32 +172,35 @@ export default function Students() {
   // ── VIEW: COURSES ──
   if (view === 'courses') return (
     <div className="fade-in">
-      <PageHeader title="Talabalar" subtitle="Kurs tanlang"
-        actions={<button className="btn-primary" onClick={openAdd}><Plus size={14}/> Talaba qo'shish</button>}/>
+      <PageHeader title="Talabalar boshqaruvi" subtitle="Kursni tanlab guruhlarga o'ting"
+        actions={<button className="btn-primary py-2.5 px-6 text-xs font-900 uppercase tracking-widest shadow-lg shadow-primary/25" onClick={openAdd}><Plus size={14}/> Talaba qo'shish</button>}/>
       <Breadcrumb/>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {courses.map(c => {
           const cg = groups.filter(g => String(g.course?.id ?? g.courseId) === String(c.id));
           return (
             <div key={c.id} onClick={() => openCourse(c)}
-              className="card p-4 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all group">
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: (c.color || '#7C3AED') + '18' }}>
-                  <BookOpen size={18} style={{ color: c.color || '#7C3AED' }}/>
+              className="card p-5 cursor-pointer hover:shadow-2xl hover:-translate-y-1.5 transition-all group relative overflow-hidden">
+              <div className="flex items-start justify-between mb-5 relative z-10">
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner" style={{ background: (c.color || '#7C3AED') + '10' }}>
+                  <BookOpen size={22} style={{ color: c.color || '#7C3AED' }}/>
                 </div>
-                <ChevronRight size={15} className="text-gray-300 group-hover:text-primary transition-colors mt-1"/>
+                <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-white/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+                   <ChevronRight size={16} className="text-primary"/>
+                </div>
               </div>
-              <p className="font-800 text-gray-800 text-sm mb-2 leading-snug">{c.name}</p>
-              <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1 text-xs text-gray-400 font-600"><Users size={11}/> {cg.length} guruh</span>
-                <span className="text-gray-200">·</span>
-                <span className="text-xs text-gray-400 font-600">{c.durationMonth || '—'} oy</span>
+              <p className="font-900 text-gray-800 dark:text-gray-100 text-base mb-3 leading-tight uppercase tracking-tight">{c.name}</p>
+              <div className="flex items-center gap-4 relative z-10">
+                <span className="flex items-center gap-1.5 text-[11px] text-gray-400 dark:text-gray-500 font-800 uppercase tracking-widest"><Users size={12}/> {cg.length} guruh</span>
+                <span className="w-1 h-1 rounded-full bg-gray-200 dark:bg-white/10" />
+                <span className="text-[11px] text-gray-400 dark:text-gray-500 font-800 uppercase tracking-widest">{c.durationMonth || '—'} OY KURS</span>
               </div>
-              {c.price && <p className="text-xs font-800 text-primary mt-2">{Number(c.price).toLocaleString()} so'm</p>}
+              {c.price && <p className="text-sm font-900 text-primary mt-4 tracking-tighter">{Number(c.price).toLocaleString()} SO'M</p>}
+              <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full transition-all group-hover:scale-150" style={{ background: (c.color || '#7C3AED') + '05' }} />
             </div>
           );
         })}
-        {courses.length === 0 && <div className="col-span-4 card"><Empty icon="📚" text="Kurslar topilmadi"/></div>}
+        {courses.length === 0 && <div className="col-span-4 card py-20"><Empty icon="📚" text="Kurslar topilmadi"/></div>}
       </div>
       <DrawerForm {...drawerProps}/>{dialogEl}
     </div>
@@ -206,31 +209,33 @@ export default function Students() {
   // ── VIEW: GROUPS ──
   if (view === 'groups') return (
     <div className="fade-in">
-      <PageHeader title={selectedCourse?.name || 'Guruhlar'} subtitle={`${courseGroups.length} ta guruh`}
-        actions={<button className="btn-primary" onClick={openAdd}><Plus size={14}/> Talaba qo'shish</button>}/>
+      <PageHeader title={selectedCourse?.name || 'Guruhlar'} subtitle={`${courseGroups.length} ta mavjud guruhlar`}
+        actions={<button className="btn-primary py-2.5 px-6 text-xs font-900 uppercase tracking-widest shadow-lg shadow-primary/25" onClick={openAdd}><Plus size={14}/> Talaba qo'shish</button>}/>
       <Breadcrumb/>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {courseGroups.map(g => (
           <div key={g.id} onClick={() => openGroup(g)}
-            className="card p-4 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all group">
-            <div className="flex items-start justify-between mb-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
-                <Users size={18} className="text-primary"/>
+            className="card p-6 cursor-pointer hover:shadow-2xl hover:-translate-y-1.5 transition-all group">
+            <div className="flex items-start justify-between mb-5">
+              <div className="w-12 h-12 rounded-2xl bg-primary/5 dark:bg-primary/20 flex items-center justify-center text-primary transition-transform group-hover:rotate-6">
+                <Users size={22}/>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="badge badge-green">ACTIVE</span>
-                <ChevronRight size={15} className="text-gray-300 group-hover:text-primary transition-colors"/>
+              <div className="flex items-center gap-2">
+                <span className="badge badge-green px-3">ACTIVE</span>
+                <div className="w-7 h-7 rounded-lg bg-gray-50 dark:bg-white/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+                  <ChevronRight size={14} className="text-primary"/>
+                </div>
               </div>
             </div>
-            <p className="font-800 text-gray-800 text-sm mb-2">{g.name}</p>
-            <div className="space-y-1">
-              {g.startTime && <p className="text-xs text-gray-400 font-600">⏰ {g.startTime}</p>}
-              {g.weekDays?.length > 0 && <p className="text-xs text-gray-400 font-600">📅 {g.weekDays.map(d => DAYS_UZ[d] || d).join(', ')}</p>}
-              {g.startDate && <p className="text-xs text-gray-400 font-600">🗓 {formatDate(g.startDate)} → {formatDate(g.endDate) || '...'}</p>}
+            <p className="font-900 text-gray-800 dark:text-gray-100 text-base mb-4 uppercase tracking-tight">{g.name}</p>
+            <div className="space-y-2.5 p-3 bg-gray-50/50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+              {g.startTime && <p className="text-[11px] text-gray-400 dark:text-gray-500 font-800 uppercase tracking-widest flex items-center gap-2"><span className="text-primary opacity-60">⏰</span> {g.startTime}</p>}
+              {g.weekDays?.length > 0 && <p className="text-[11px] text-gray-400 dark:text-gray-500 font-800 uppercase tracking-widest flex items-center gap-2"><span className="text-primary opacity-60">📅</span> {g.weekDays.map(d => DAYS_UZ[d] || d).join(', ')}</p>}
+              {g.startDate && <p className="text-[11px] text-gray-400 dark:text-gray-500 font-800 uppercase tracking-widest flex items-center gap-2"><span className="text-primary opacity-60">🗓</span> {formatDate(g.startDate)} → {formatDate(g.endDate) || '...'}</p>}
             </div>
           </div>
         ))}
-        {courseGroups.length === 0 && <div className="col-span-3 card"><Empty icon="👥" text="Bu kursda guruhlar topilmadi"/></div>}
+        {courseGroups.length === 0 && <div className="col-span-3 card py-20"><Empty icon="👥" text="Bu kursda guruhlar topilmadi"/></div>}
       </div>
       <DrawerForm {...drawerProps}/>{dialogEl}
     </div>
@@ -239,39 +244,39 @@ export default function Students() {
   // ── VIEW: STUDENTS (guruh ichida) ──
   if (view === 'students') return (
     <div className="fade-in">
-      <PageHeader title={selectedGroup?.name || 'Talabalar'} subtitle={`${groupStudents.length} ta talaba`}
-        actions={<button className="btn-primary" onClick={openAdd}><Plus size={14}/> Talaba qo'shish</button>}/>
+      <PageHeader title={selectedGroup?.name || 'Talabalar'} subtitle={`${groupStudents.length} ta guruhdagi talabalar`}
+        actions={<button className="btn-primary py-2.5 px-6 text-xs font-900 uppercase tracking-widest shadow-lg shadow-primary/25" onClick={openAdd}><Plus size={14}/> Talaba qo'shish</button>}/>
       <Breadcrumb/>
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="card overflow-hidden shadow-xl shadow-primary/5">
+        <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full">
             <thead><tr>
-              {['#','Talaba','Email',"Tug'ilgan sana",'Qo\'shilgan sana','Amallar'].map(h => (
-                <th key={h} className="table-header first:pl-4 last:pr-4">{h}</th>
+              {['#','To\'liq ism','Email manzili',"Tug'ilgan sana",'Qo\'shilgan sana','Amallar'].map(h => (
+                <th key={h} className="table-header first:pl-6 last:pr-6">{h}</th>
               ))}
             </tr></thead>
             <tbody>
               {groupStudents.length === 0
                 ? <tr><td colSpan={6}><Empty icon="🎓" text="Bu guruhda talabalar topilmadi"/></td></tr>
                 : groupStudents.map((s, i) => (
-                <tr key={s.id} className="hover:bg-gray-50/60 transition-colors">
-                  <td className="table-cell pl-4 text-gray-400 font-700 text-xs">{i + 1}</td>
+                <tr key={s.id} className="hover:bg-gray-50/60 dark:hover:bg-white/5 transition-all">
+                  <td className="table-cell pl-6 text-gray-400 font-900 text-[10px]">#{i + 1}</td>
                   <td className="table-cell">
-                    <div className="flex items-center gap-2.5">
-                      <Avatar name={s.fullName} photo={s.photo} size="sm"/>
+                    <div className="flex items-center gap-3">
+                      <Avatar name={s.fullName} photo={s.photo} size="md" className="ring-2 ring-white dark:ring-gray-800 shadow-sm"/>
                       <div>
-                        <p className="font-700 text-gray-800 text-sm">{s.fullName}</p>
-                        {s.phone && <p className="text-xs text-gray-400">{s.phone}</p>}
+                        <p className="font-800 text-gray-800 dark:text-gray-100 text-sm leading-none mb-1">{s.fullName}</p>
+                        {s.phone && <p className="text-[11px] text-gray-400 dark:text-gray-500 font-700 uppercase tracking-tighter">{s.phone}</p>}
                       </div>
                     </div>
                   </td>
-                  <td className="table-cell text-xs text-gray-500">{s.email || '—'}</td>
-                  <td className="table-cell text-xs text-gray-400">{formatDate(s.birth_date)}</td>
-                  <td className="table-cell text-xs text-gray-400">{formatDate(s.createdAt || s.created_at)}</td>
-                  <td className="table-cell pr-4">
-                    <div className="flex items-center gap-1.5">
-                      <button onClick={() => openEdit(s)} className="w-6 h-6 rounded-md bg-blue-50 text-blue-500 hover:bg-blue-100 flex items-center justify-center"><Edit2 size={11}/></button>
-                      <button onClick={() => setDeleteId(s.id)} className="w-6 h-6 rounded-md bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center"><Trash2 size={11}/></button>
+                  <td className="table-cell text-xs font-700 text-gray-500 dark:text-gray-400">{s.email || '—'}</td>
+                  <td className="table-cell text-[11px] text-gray-400 dark:text-gray-500 font-800 uppercase tracking-widest">{formatDate(s.birth_date)}</td>
+                  <td className="table-cell text-[11px] text-gray-400 dark:text-gray-500 font-800 uppercase tracking-widest">{formatDate(s.createdAt || s.created_at)}</td>
+                  <td className="table-cell pr-6">
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <button onClick={() => openEdit(s)} className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-all flex items-center justify-center shadow-sm"><Edit2 size={13}/></button>
+                      <button onClick={() => setDeleteId(s.id)} className="w-8 h-8 rounded-xl bg-red-50 dark:bg-red-900/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shadow-sm"><Trash2 size={13}/></button>
                     </div>
                   </td>
                 </tr>
@@ -287,56 +292,62 @@ export default function Students() {
   // ── VIEW: ALL ──
   return (
     <div className="fade-in">
-      <PageHeader title="Barcha talabalar" subtitle={`${allFiltered.length} ta talaba`}
-        actions={<button className="btn-primary" onClick={openAdd}><Plus size={14}/> Talaba qo'shish</button>}/>
+      <PageHeader title="Talabalar bazasi" subtitle={`${allFiltered.length} ta umumiy talabalar ro'yxati`}
+        actions={<button className="btn-primary py-2.5 px-6 text-xs font-900 uppercase tracking-widest shadow-lg shadow-primary/25" onClick={openAdd}><Plus size={14}/> Talaba qo'shish</button>}/>
       <Breadcrumb/>
-      <div className="card overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 gap-3 flex-wrap">
-          <div className="flex gap-1">
-            {[['active',"Faol o'quvchi"],['archive','Arxiv']].map(([val,label]) => (
+      <div className="card overflow-hidden shadow-xl shadow-primary/5">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5 gap-4 flex-wrap">
+          <div className="flex gap-1 p-1 bg-white dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5 shadow-sm">
+            {[['active',"Faol"],['archive','Arxiv']].map(([val,label]) => (
               <button key={val} onClick={() => { setTab(val); setPage(1); }}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-700 transition-colors ${tab === val ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-100'}`}>{label}</button>
+                className={`px-5 py-2 rounded-lg text-[11px] font-900 uppercase tracking-widest transition-all ${tab === val ? 'bg-primary text-white shadow-md' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}`}>{label}</button>
             ))}
           </div>
-          <div className="flex items-center gap-2">
-            <SearchInput value={search} onChange={v => { setSearch(v); setPage(1); }} placeholder="Ism yoki email"/>
-            <select className="px-3 py-2 rounded-lg border border-gray-200 text-xs font-600 text-gray-600 bg-gray-50 outline-none"
+          <div className="flex items-center gap-3 flex-1 justify-end min-w-[300px]">
+            <SearchInput value={search} onChange={v => { setSearch(v); setPage(1); }} placeholder="Talaba nomi yoki email..."/>
+            <select className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 text-[11px] font-900 uppercase tracking-widest text-gray-600 dark:text-gray-400 bg-white dark:bg-white/5 outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
               onChange={e => { const g = groups.find(x => String(x.id) === e.target.value); if (g) openGroup(g); }}>
               <option value="">Barcha guruhlar</option>
               {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
             </select>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full">
             <thead><tr>
-              {['#','Talaba','Guruh','Email',"Tug'ilgan sana",'Yaratilgan sana','Amallar'].map(h => (
-                <th key={h} className="table-header first:pl-4 last:pr-4">{h}</th>
+              {['#','To\'liq ism','Guruh','Email manzili',"Tug'ilgan sana",'Sana','Amallar'].map(h => (
+                <th key={h} className="table-header first:pl-6 last:pr-6">{h}</th>
               ))}
             </tr></thead>
             <tbody>
               {paginated.length === 0
-                ? <tr><td colSpan={7}><Empty text="Talabalar topilmadi"/></td></tr>
+                ? <tr><td colSpan={7} className="py-20"><Empty text="Talabalar topilmadi"/></td></tr>
                 : paginated.map((s, i) => (
-                <tr key={s.id} className="hover:bg-gray-50/60 transition-colors">
-                  <td className="table-cell pl-4 text-gray-400 font-700 text-xs">{(page-1)*PER_PAGE+i+1}</td>
+                <tr key={s.id} className="hover:bg-gray-50/60 dark:hover:bg-white/5 transition-all">
+                  <td className="table-cell pl-6 text-gray-400 font-900 text-[10px]">{(page-1)*PER_PAGE+i+1}</td>
                   <td className="table-cell">
-                    <div className="flex items-center gap-2.5">
-                      <Avatar name={s.fullName} photo={s.photo} size="sm"/>
+                    <div className="flex items-center gap-3">
+                      <Avatar name={s.fullName} photo={s.photo} size="md" className="ring-2 ring-white dark:ring-gray-800 shadow-sm"/>
                       <div>
-                        <p className="font-700 text-gray-800 text-sm">{s.fullName}</p>
-                        {s.phone && <p className="text-xs text-gray-400">{s.phone}</p>}
+                        <p className="font-800 text-gray-800 dark:text-gray-100 text-sm leading-none mb-1">{s.fullName}</p>
+                        {s.phone && <p className="text-[11px] text-gray-400 dark:text-gray-500 font-700 uppercase tracking-tighter">{s.phone}</p>}
                       </div>
                     </div>
                   </td>
-                  <td className="table-cell text-xs text-gray-500 font-600">{s.StudentGroups?.length? s.StudentGroups.map(sg => sg.group?.name).join(', '): '—'}</td>
-                  <td className="table-cell text-xs text-gray-500">{s.email || '—'}</td>
-                  <td className="table-cell text-xs text-gray-400">{formatDate(s.birth_date)}</td>
-                  <td className="table-cell text-xs text-gray-400">{formatDate(s.createdAt || s.created_at)}</td>
-                  <td className="table-cell pr-4">
-                    <div className="flex items-center gap-1.5">
-                      <button onClick={() => openEdit(s)} className="w-6 h-6 rounded-md bg-blue-50 text-blue-500 hover:bg-blue-100 flex items-center justify-center"><Edit2 size={11}/></button>
-                      <button onClick={() => setDeleteId(s.id)} className="w-6 h-6 rounded-md bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center"><Trash2 size={11}/></button>
+                  <td className="table-cell">
+                      <div className="flex flex-wrap gap-1">
+                        {s.StudentGroups?.length 
+                            ? s.StudentGroups.map(sg => <span key={sg.id} className="text-[10px] font-900 text-primary uppercase tracking-tighter bg-primary/5 px-2 py-0.5 rounded-md border border-primary/10">{sg.group?.name}</span>)
+                            : <span className="text-[10px] font-800 text-gray-400 uppercase tracking-widest">—</span>}
+                      </div>
+                  </td>
+                  <td className="table-cell text-xs font-700 text-gray-500 dark:text-gray-400">{s.email || '—'}</td>
+                  <td className="table-cell text-[11px] text-gray-400 dark:text-gray-500 font-800 uppercase tracking-widest">{formatDate(s.birth_date)}</td>
+                  <td className="table-cell text-[11px] text-gray-400 dark:text-gray-500 font-800 uppercase tracking-widest">{formatDate(s.createdAt || s.created_at)}</td>
+                  <td className="table-cell pr-6">
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <button onClick={() => openEdit(s)} className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-all flex items-center justify-center shadow-sm"><Edit2 size={13}/></button>
+                      <button onClick={() => setDeleteId(s.id)} className="w-8 h-8 rounded-xl bg-red-50 dark:bg-red-900/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shadow-sm"><Trash2 size={13}/></button>
                     </div>
                   </td>
                 </tr>

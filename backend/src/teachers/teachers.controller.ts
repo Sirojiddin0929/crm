@@ -27,12 +27,12 @@ import type { Response } from 'express';
 
 @ApiTags('Teachers')
 @Controller('teachers')
-@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiCookieAuth('access_token')
 export class TeachersController {
   constructor(private readonly teachersService: TeachersService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @ApiOperation({ summary: "Yangi o'qituvchi qo'shish" })
   create(@Body() dto: CreateTeacherDto) {
@@ -55,6 +55,7 @@ export class TeachersController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
   @ApiOperation({ summary: "Barcha o'qituvchilarni ko'rish" })
   findAll() {
@@ -62,6 +63,7 @@ export class TeachersController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
   @ApiOperation({ summary: "O'qituvchini ID bo'yicha ko'rish (rating va guruhlar bilan)" })
   findOne(@Param('id', ParseIntPipe) id: number) {
@@ -69,6 +71,7 @@ export class TeachersController {
   }
 
   @Get(':id/groups')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
   @ApiOperation({ summary: "O'qituvchining guruhlari" })
   getGroups(@Param('id', ParseIntPipe) id: number) {
@@ -76,7 +79,8 @@ export class TeachersController {
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.TEACHER)
   @ApiOperation({ summary: "O'qituvchi ma'lumotlarini yangilash" })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -86,7 +90,8 @@ export class TeachersController {
   }
 
   @Patch(':id/photo')
-  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.TEACHER)
   @UseInterceptors(FileInterceptor('photo', multerConfig))
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -104,6 +109,7 @@ export class TeachersController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @ApiOperation({ summary: "O'qituvchini o'chirish (status INACTIVE ga o'tadi)" })
   remove(@Param('id', ParseIntPipe) id: number) {

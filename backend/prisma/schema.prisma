@@ -57,6 +57,8 @@ model Student {
   password          String
   birth_date        DateTime
   status            UserStatus         @default(ACTIVE)
+  xp                Int                @default(0)
+  coin              Int                @default(0)
   created_at        DateTime           @default(now())
   updated_at        DateTime           @updatedAt
   StudentAttendence Attendance[]
@@ -64,6 +66,19 @@ model Student {
   HomeworkResult    HomeworkResult[]
   Rating            Rating[]
   StudentGroups     StudentGroup[]
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  price       Int
+  photo       String?
+  category    String?
+  stock       Int      @default(0)
+  status      Status   @default(ACTIVE)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 }
 
 model Course {
@@ -215,6 +230,8 @@ model HomeworkResult {
   title      String
   file       String?
   score      Int
+  xp         Int             @default(0)
+  coin       Int             @default(0)
   status     HomeworkStatus
   created_at DateTime       @default(now())
   updated_at DateTime       @updatedAt

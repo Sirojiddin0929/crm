@@ -108,6 +108,7 @@
           id:student.id,
           fullName:student.fullName,
           email:student.email,
+          photo: student.photo,
           role:'STUDENT',
           status:student.status
         }
@@ -219,6 +220,7 @@
               course: { select: { id: true, name: true, level: true } },
               teacher: { select: { id: true, fullName: true } },
               room: { select: { id: true, name: true } },
+              user: { select: { id: true, fullName: true, role: true } },
             },
           },
         },

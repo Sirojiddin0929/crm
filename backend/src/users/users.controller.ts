@@ -39,7 +39,7 @@ export class UsersController {
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
   @ApiOperation({ summary: 'User ma\'lumotlarini yangilash' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -49,7 +49,7 @@ export class UsersController {
   }
 
   @Patch(':id/photo')
-  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
   @UseInterceptors(FileInterceptor('photo', multerConfig))
   @ApiConsumes('multipart/form-data')
   @ApiBody({ schema: { type: 'object', properties: { photo: { type: 'string', format: 'binary' } } } })

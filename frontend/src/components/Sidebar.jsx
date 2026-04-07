@@ -7,6 +7,7 @@ import {
   Gift, Wallet, BookMarked, School, Video, ClipboardList,
   Star,
 } from 'lucide-react';
+import { Avatar } from './UI';
 
 const NAV = [
   { path: '/admin', label: 'Asosiy', icon: LayoutDashboard, exact: true },
@@ -82,9 +83,7 @@ export default function Sidebar() {
       <div className="p-3 border-t border-white/10">
         {!collapsed ? (
           <div className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-white/8 cursor-pointer group">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-700 flex-shrink-0">
-              {user?.fullName?.[0] || 'A'}
-            </div>
+            <Avatar name={user?.fullName} photo={user?.photo} size="sm" />
             <div className="flex-1 min-w-0">
               <p className="text-white text-xs font-700 truncate">{user?.fullName || 'Admin'}</p>
               <p className="text-gray-400 text-xs truncate">{user?.email || ''}</p>

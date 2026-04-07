@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { Plus, Trash2, Edit2, Star, ChevronRight, ChevronLeft, Users, BookOpen, Clock } from 'lucide-react';
+import { Plus, Trash2, Edit2, Star, ChevronRight, ChevronLeft, Users, BookOpen, Clock, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { teachersAPI, coursesAPI } from '../../services/api';
 import dayjs from 'dayjs';
@@ -220,27 +220,40 @@ export default function Teachers() {
     <div className="fade-in">
       {/* Teacher profil header */}
       <Breadcrumb/>
-      <div className="card p-4 mb-4">
-        <div className="flex items-center gap-4">
-          <Avatar name={selectedTeacher?.fullName} photo={selectedTeacher?.photo} size="lg"/>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg font-800 text-gray-800">{selectedTeacher?.fullName}</h1>
-              {selectedTeacher?.avgRating && (
-                <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 rounded-lg text-xs font-800 text-amber-600">
-                  <Star size={11} fill="currentColor"/> {Number(selectedTeacher.avgRating).toFixed(1)}
+      <div className="card p-6 mb-6 shadow-xl shadow-primary/5">
+        <div className="flex flex-col md:flex-row items-center gap-6">
+          <div className="relative">
+            <Avatar name={selectedTeacher?.fullName} photo={selectedTeacher?.photo} size="xl" className="w-24 h-24 ring-4 ring-primary/10 shadow-lg"/>
+            {selectedTeacher?.avgRating && (
+              <div className="absolute -bottom-1 -right-1 bg-amber-400 text-white text-[10px] font-900 px-2 py-0.5 rounded-lg border-2 border-white dark:border-gray-800 flex items-center gap-1 shadow-md">
+                <Star size={10} fill="currentColor"/> {Number(selectedTeacher.avgRating).toFixed(1)}
+              </div>
+            )}
+          </div>
+          <div className="flex-1 text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
+              <h1 className="text-2xl font-900 text-gray-800 dark:text-gray-100 uppercase tracking-tight">{selectedTeacher?.fullName}</h1>
+              <span className="badge badge-primary text-[10px] tracking-widest uppercase">O'QITUVCHI</span>
+            </div>
+            <p className="text-sm text-primary font-800 mb-3 uppercase tracking-widest opacity-80">{selectedTeacher?.position || 'UX/UI DESIGNER'}</p>
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
+              <span className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 font-700 bg-gray-50 dark:bg-white/5 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-white/5">
+                <Mail size={12} className="text-primary"/> {selectedTeacher?.email}
+              </span>
+              {selectedTeacher?.experience && (
+                <span className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 font-700 bg-gray-50 dark:bg-white/5 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-white/5">
+                  <Star size={12} className="text-amber-400"/> {selectedTeacher.experience} Yillik Tajriba
                 </span>
               )}
             </div>
-            <p className="text-sm text-gray-400 font-600">{selectedTeacher?.position || '—'}</p>
-            <div className="flex items-center gap-4 mt-1 flex-wrap">
-              <span className="text-xs text-gray-400">📧 {selectedTeacher?.email}</span>
-              {selectedTeacher?.experience && <span className="text-xs text-gray-400">💼 {selectedTeacher.experience} yil</span>}
-            </div>
           </div>
-          <div className="flex gap-2">
-            <button onClick={() => openEdit(selectedTeacher)} className="btn-secondary text-xs"><Edit2 size={13}/> Tahrirlash</button>
-            <button onClick={() => setDeleteId(selectedTeacher?.id)} className="flex items-center gap-1.5 px-3 py-2 bg-red-50 text-red-500 hover:bg-red-100 text-xs font-700 rounded-lg transition-colors"><Trash2 size={13}/> O'chirish</button>
+          <div className="flex gap-3">
+            <button onClick={() => openEdit(selectedTeacher)} className="btn-secondary py-2.5 px-6 text-xs font-900 uppercase tracking-widest shadow-sm">
+                <Edit2 size={13}/> Tahrirlash
+            </button>
+            <button onClick={() => setDeleteId(selectedTeacher?.id)} className="px-6 py-2.5 bg-red-50 dark:bg-red-900/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-xs font-900 uppercase tracking-widest rounded-xl shadow-sm">
+                <Trash2 size={13}/> O'chirish
+            </button>
           </div>
         </div>
       </div>
@@ -359,49 +372,47 @@ export default function Teachers() {
   return (
     <div className="fade-in">
       <PageHeader
-        title="O'qituvchilar"
-        subtitle={`${filtered.length} ta o'qituvchi`}
+        title="O'qituvchilar bazasi"
+        subtitle={`${filtered.length} ta umumiy o'qituvchilar ro'yxati`}
         actions={
-          <button className="btn-primary" onClick={() => { setEditItem(null); setForm(defaultForm); setPhotoFile(null); setDrawerOpen(true); }}>
+          <button className="btn-primary py-2.5 px-6 text-xs font-900 uppercase tracking-widest shadow-lg shadow-primary/25" onClick={() => { setEditItem(null); setForm(defaultForm); setPhotoFile(null); setDrawerOpen(true); }}>
             <Plus size={14}/> O'qituvchi qo'shish
           </button>
         }
       />
 
-      <div className="card overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 gap-3 flex-wrap">
-          <div className="flex gap-1">
-            {[['active',"Faol o'qituvchi"],['archive','Arxiv']].map(([val,label]) => (
+      <div className="card overflow-hidden shadow-xl shadow-primary/5">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5 gap-4 flex-wrap">
+          <div className="flex gap-1 p-1 bg-white dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5 shadow-sm">
+            {[['active',"Faol"],['archive','Arxiv']].map(([val,label]) => (
               <button key={val} onClick={() => { setTab(val); setPage(1); }}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-700 transition-colors ${tab === val ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
-                {label}
-              </button>
+                className={`px-5 py-2 rounded-lg text-[11px] font-900 uppercase tracking-widest transition-all ${tab === val ? 'bg-primary text-white shadow-md' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}`}>{label}</button>
             ))}
           </div>
-          <SearchInput value={search} onChange={v => { setSearch(v); setPage(1); }} placeholder="Ism, email yoki lavozim"/>
+          <SearchInput value={search} onChange={v => { setSearch(v); setPage(1); }} placeholder="Ism, email yoki lavozim qidirish..."/>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full">
             <thead><tr>
-              {['#',"O'qituvchi",'Lavozim','Email','Yaratilgan sana','Amallar'].map(h => (
-                <th key={h} className="table-header first:pl-4 last:pr-4">{h}</th>
+              {['#',"O'qituvchi",'Lavozimi','Email manzili','Sana','Amallar'].map(h => (
+                <th key={h} className="table-header first:pl-6 last:pr-6">{h}</th>
               ))}
             </tr></thead>
             <tbody>
               {paginated.length === 0 ? (
-                <tr><td colSpan={6}><Empty text="O'qituvchilar topilmadi"/></td></tr>
+                <tr><td colSpan={6} className="py-20"><Empty text="O'qituvchilar topilmadi"/></td></tr>
               ) : paginated.map((t, i) => (
                 <tr key={t.id} onClick={() => openTeacher(t)}
-                  className="hover:bg-gray-50/60 transition-colors cursor-pointer">
-                  <td className="table-cell pl-4 text-gray-400 font-700 text-xs">{(page-1)*PER_PAGE+i+1}</td>
+                  className="hover:bg-gray-50/60 dark:hover:bg-white/5 transition-all cursor-pointer group">
+                  <td className="table-cell pl-6 text-gray-400 font-900 text-[10px]">#{(page-1)*PER_PAGE+i+1}</td>
                   <td className="table-cell">
-                    <div className="flex items-center gap-2.5">
-                      <Avatar name={t.fullName} photo={t.photo} size="sm"/>
+                    <div className="flex items-center gap-3">
+                      <Avatar name={t.fullName} photo={t.photo} size="md" className="ring-2 ring-white dark:ring-gray-800 shadow-sm group-hover:ring-primary/30 transition-all"/>
                       <div>
-                        <p className="font-700 text-gray-800 text-sm">{t.fullName}</p>
+                        <p className="font-800 text-gray-800 dark:text-gray-100 text-sm leading-none mb-1">{t.fullName}</p>
                         {t.avgRating && (
-                          <span className="inline-flex items-center gap-0.5 text-xs text-amber-500 font-700">
+                          <span className="inline-flex items-center gap-1 text-[10px] text-amber-500 font-900 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md">
                             <Star size={10} fill="currentColor"/> {Number(t.avgRating).toFixed(1)}
                           </span>
                         )}
@@ -411,12 +422,12 @@ export default function Teachers() {
                   <td className="table-cell">
                     <RoleBadge role={t.position?.toUpperCase().replace(/ /g,'_') || 'TEACHER'}/>
                   </td>
-                  <td className="table-cell text-xs text-gray-500">{t.email}</td>
-                  <td className="table-cell text-xs text-gray-400">{formatDate(t.createdAt || t.created_at)}</td>
-                  <td className="table-cell pr-4" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => openEdit(t)} className="w-6 h-6 rounded-md bg-blue-50 text-blue-500 hover:bg-blue-100 flex items-center justify-center"><Edit2 size={11}/></button>
-                      <button onClick={() => setDeleteId(t.id)} className="w-6 h-6 rounded-md bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center"><Trash2 size={11}/></button>
+                  <td className="table-cell text-xs font-700 text-gray-500 dark:text-gray-400">{t.email}</td>
+                  <td className="table-cell text-[11px] text-gray-400 dark:text-gray-500 font-800 uppercase tracking-widest">{formatDate(t.createdAt || t.created_at)}</td>
+                  <td className="table-cell pr-6" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <button onClick={() => openEdit(t)} className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-all flex items-center justify-center shadow-sm"><Edit2 size={13}/></button>
+                      <button onClick={() => setDeleteId(t.id)} className="w-8 h-8 rounded-xl bg-red-50 dark:bg-red-900/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shadow-sm"><Trash2 size={13}/></button>
                     </div>
                   </td>
                 </tr>

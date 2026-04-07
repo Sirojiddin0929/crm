@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "HomeworkResult" ADD COLUMN     "coin" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "xp" INTEGER NOT NULL DEFAULT 0;

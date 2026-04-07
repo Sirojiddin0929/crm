@@ -61,33 +61,33 @@ export function TeacherAttendance() {
   return (
     <div className="fade-in">
       <PageHeader title="Davomat belgilash" subtitle="Guruh va dars tanlang"/>
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
         {/* Left selectors */}
-        <div className="space-y-3">
-          <div className="card p-4">
-            <p className="text-xs font-800 text-gray-500 uppercase tracking-wide mb-3">Guruh tanlang</p>
-            <div className="space-y-1.5">
+        <div className="space-y-4">
+          <div className="card p-5">
+            <p className="text-[10px] font-900 text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4">1. Guruh tanlang</p>
+            <div className="space-y-2">
               {groups.map(g => (
                 <button key={g.id} onClick={() => selectGroup(g.id)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm font-700 transition-colors ${selectedGroup == g.id ? 'bg-primary text-white' : 'hover:bg-gray-50 text-gray-700'}`}>
+                  className={`w-full text-left px-4 py-3 rounded-xl text-sm font-800 transition-all ${selectedGroup == g.id ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]' : 'hover:bg-primary/5 text-gray-700 dark:text-gray-300 dark:hover:bg-white/5 border border-transparent'}`}>
                   {g.name}
                 </button>
               ))}
-              {groups.length === 0 && <p className="text-xs text-gray-400 text-center py-3">Guruhlar yo'q</p>}
+              {groups.length === 0 && <p className="text-xs text-gray-400 text-center py-4 italic">Guruhlar yo'q</p>}
             </div>
           </div>
           {selectedGroup && (
-            <div className="card p-4">
-              <p className="text-xs font-800 text-gray-500 uppercase tracking-wide mb-3">Dars tanlang</p>
-              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+            <div className="card p-5 animate-in fade-in slide-in-from-top-2">
+              <p className="text-[10px] font-900 text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4">2. Dars tanlang</p>
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
                 {lessons.map(l => (
                   <button key={l.id} onClick={() => selectLesson(l.id)}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-700 transition-colors ${selectedLesson == l.id ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-gray-50 text-gray-700'}`}>
-                    <p className="truncate">{l.title}</p>
-                    <p className="text-gray-400 font-500 mt-0.5">{l.date || '—'}</p>
+                    className={`w-full text-left px-4 py-3 rounded-xl text-xs font-800 transition-all border ${selectedLesson == l.id ? 'bg-primary/5 text-primary border-primary/20 ring-1 ring-primary/20' : 'hover:bg-gray-50 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300 border-transparent'}`}>
+                    <p className="truncate font-900 uppercase tracking-tight">{l.title}</p>
+                    <p className="text-gray-400 dark:text-gray-500 font-700 mt-1 flex items-center gap-1">📅 {l.date || '—'}</p>
                   </button>
                 ))}
-                {lessons.length === 0 && <p className="text-xs text-gray-400 text-center py-3">Darslar yo'q</p>}
+                {lessons.length === 0 && <p className="text-xs text-gray-400 text-center py-4 italic">Darslar hali yaratilmagan</p>}
               </div>
             </div>
           )}
@@ -96,46 +96,52 @@ export function TeacherAttendance() {
         {/* Right attendance list */}
         <div className="lg:col-span-3">
           {!selectedLesson ? (
-            <div className="card flex flex-col items-center justify-center h-64">
-              <div className="text-4xl mb-3">📋</div>
-              <p className="text-sm font-700 text-gray-500">Guruh va dars tanlang</p>
+            <div className="card flex flex-col items-center justify-center min-h-[400px] border-2 border-dashed border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.02]">
+              <div className="w-20 h-20 rounded-3xl bg-primary/5 flex items-center justify-center mb-5">
+                <RefreshCw size={32} className="text-primary/40 animate-pulse"/>
+              </div>
+              <p className="text-base font-900 text-gray-800 dark:text-gray-100">Darsni tanlang</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 font-700">Davomatni belgilash uchun yuqoridagi ro'yxatdan darsni tanlang</p>
             </div>
           ) : (
-            <div className="card overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
+            <div className="card overflow-hidden shadow-xl shadow-primary/5">
+              <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5">
                 <div>
-                  <p className="font-800 text-gray-800 text-sm">Yo'qlama</p>
-                  <p className="text-xs text-gray-400">{presentCount} keldi · {students.length - presentCount} kelmadi</p>
+                  <h3 className="font-900 text-gray-800 dark:text-gray-100 text-lg tracking-tight">Talabalar yo'qlamasi</h3>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-[10px] font-900 text-green-600 uppercase tracking-widest bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-md">{presentCount} keldi</span>
+                    <span className="text-[10px] font-900 text-red-500 uppercase tracking-widest bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded-md">{students.length - presentCount} kelmadi</span>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => { const all = {}; students.forEach(s => { all[s.id] = true; }); setAttendance(all); }} className="px-3 py-1.5 bg-green-50 text-green-700 text-xs font-700 rounded-lg hover:bg-green-100">Barchasi keldi</button>
-                  <button onClick={() => { const none = {}; students.forEach(s => { none[s.id] = false; }); setAttendance(none); }} className="px-3 py-1.5 bg-red-50 text-red-600 text-xs font-700 rounded-lg hover:bg-red-100">Hech kim kelmadi</button>
-                  <button onClick={save} disabled={saving} className="btn-primary text-xs">{saving ? 'Saqlanmoqda...' : 'Saqlash'}</button>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => { const all = {}; students.forEach(s => { all[s.id] = true; }); setAttendance(all); }} className="px-4 py-2 bg-green-50 dark:bg-green-900/10 text-green-700 dark:text-green-500 text-[11px] font-900 uppercase tracking-wider rounded-xl hover:bg-green-100 dark:hover:bg-green-900/20 transition-colors">Barchasi ✅</button>
+                  <button onClick={() => { const none = {}; students.forEach(s => { none[s.id] = false; }); setAttendance(none); }} className="px-4 py-2 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-500 text-[11px] font-900 uppercase tracking-wider rounded-xl hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors">Hech kim ❌</button>
+                  <button onClick={save} disabled={saving} className="btn-primary py-2 px-6 text-xs font-900 uppercase tracking-widest shadow-lg shadow-primary/25 disabled:opacity-50">{saving ? 'Saqlanmoqda...' : 'Saqlash'}</button>
                 </div>
               </div>
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-gray-50 dark:divide-white/5">
                 {students.map((s, i) => {
-                  const present = attendance[s.id] ?? false;
+                  const isPresent = attendance[s.id] ?? false;
                   return (
-                    <div key={s.id} className={`flex items-center justify-between px-4 py-3 transition-colors ${present ? 'hover:bg-green-50/30' : 'hover:bg-red-50/20'}`}>
-                      <div className="flex items-center gap-3">
-                        <span className="w-6 text-xs font-800 text-gray-400">{i + 1}</span>
-                        <Avatar name={s.fullName} size="sm"/>
+                    <div key={s.id} className={`flex items-center justify-between px-6 py-4.5 transition-all hover:bg-gray-50 dark:hover:bg-white/5 ${isPresent ? 'dark:bg-green-900/5' : 'dark:bg-red-900/5'}`}>
+                      <div className="flex items-center gap-4">
+                        <span className="w-6 text-[10px] font-900 text-gray-300 dark:text-gray-600 uppercase">#{i + 1}</span>
+                        <Avatar name={s.fullName} size="md" className="ring-2 ring-white dark:ring-gray-800 shadow-sm"/>
                         <div>
-                          <p className="font-700 text-sm text-gray-800">{s.fullName}</p>
-                          <p className="text-xs text-gray-400">{s.phone || '—'}</p>
+                          <p className="font-800 text-[15px] text-gray-800 dark:text-gray-100 leading-none">{s.fullName}</p>
+                          <p className="text-[11px] text-gray-400 dark:text-gray-500 font-700 mt-1 uppercase tracking-tighter">{s.phone || 'Telefon raqamsiz'}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`text-xs font-700 ${present ? 'text-green-600' : 'text-red-400'}`}>
-                          {present ? '✓ Keldi' : '✗ Kelmadi'}
+                      <div className="flex items-center gap-5">
+                        <span className={`text-[11px] font-900 uppercase tracking-widest hidden sm:block ${isPresent ? 'text-green-600' : 'text-red-500'}`}>
+                          {isPresent ? 'Keldi' : 'Kelmagan'}
                         </span>
-                        <Toggle value={present} onChange={() => setAttendance(prev => ({ ...prev, [s.id]: !prev[s.id] }))}/>
+                        <Toggle value={isPresent} onChange={() => setAttendance(prev => ({ ...prev, [s.id]: !prev[s.id] }))}/>
                       </div>
                     </div>
                   );
                 })}
-                {students.length === 0 && <Empty text="Talabalar topilmadi"/>}
+                {students.length === 0 && <div className="p-20"><Empty text="Talabalar topilmadi"/></div>}
               </div>
             </div>
           )}
@@ -172,7 +178,14 @@ export function TeacherVideos() {
   };
   useEffect(() => { if (user?.id) load(); }, [user]);
 
-  const handleFile = f => { setFile(f); if (!title) setTitle(f.name.replace(/\.[^.]+$/, '')); };
+  const handleFile = f => { 
+    if (f.size > 500 * 1024 * 1024) {
+      toast.error("Fayl juda katta. Maksimal 500MB yuklash mumkin.");
+      return;
+    }
+    setFile(f); 
+    if (!title) setTitle(f.name.replace(/\.[^.]+$/, '')); 
+  };
   const formatBytes = b => { if (!b) return '—'; const gb = b / 1e9; return gb >= 1 ? gb.toFixed(2) + ' GB' : (b / 1e6).toFixed(0) + ' MB'; };
 
   const handleUpload = async () => {
@@ -193,30 +206,39 @@ export function TeacherVideos() {
       <PageHeader title="Dars Videolari" subtitle={`${videos.length} ta video`}
         actions={<button className="btn-primary" onClick={() => setUploadOpen(true)}><Upload size={14}/> Video yuklash</button>}/>
 
-      <div className="card overflow-hidden">
+      <div className="card overflow-hidden shadow-xl shadow-primary/5">
+        <div className="px-6 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5 flex items-center justify-between">
+            <div>
+              <h3 className="font-900 text-gray-800 dark:text-gray-100 text-base tracking-tight uppercase">Barcha videolar</h3>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 font-700 mt-0.5 tracking-widest">{videos.length} TA VIDEO MAVJUD</p>
+            </div>
+            <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary"><FileVideo size={20}/></div>
+        </div>
         <table className="w-full">
           <thead><tr>
-            {['Video nomi', 'Dars', 'Status', 'Sana', 'Hajm', 'Amal'].map(h => <th key={h} className="table-header first:pl-4 last:pr-4">{h}</th>)}
+            {['Video nomi', 'Tegishli dars', 'Holati', 'Yuklangan sana', 'Hajm', 'Amal'].map(h => <th key={h} className="table-header first:pl-6 last:pr-6">{h}</th>)}
           </tr></thead>
           <tbody>
-            {videos.length === 0 ? <tr><td colSpan={6}><Empty text="Videolar topilmadi"/></td></tr>
-              : videos.map(v => {
+            {videos.length === 0 ? <tr><td colSpan={6}><Empty text="Hali videolar yuklanmagan"/></td></tr>
+              : videos.map((v, idx) => {
                 const lesson = lessons.find(l => l.id === v.lessonId);
                 return (
-                  <tr key={v.id} className="hover:bg-gray-50/60">
-                    <td className="table-cell pl-4">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0"><Play size={14} className="text-primary"/></div>
-                        <a href={v.url || '#'} target="_blank" rel="noreferrer" className="text-primary font-700 text-xs hover:underline truncate max-w-36 block">{v.title || '—'}</a>
+                  <tr key={v.id} className="group hover:bg-gray-50/60 dark:hover:bg-white/5 transition-all">
+                    <td className="table-cell pl-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-primary/5 dark:bg-primary/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform"><Play size={16} className="text-primary fill-primary/10"/></div>
+                        <a href={v.url || '#'} target="_blank" rel="noreferrer" className="text-gray-800 dark:text-gray-200 font-800 text-xs hover:text-primary transition-colors truncate max-w-48 block">{v.title || '—'}</a>
                       </div>
                     </td>
-                    <td className="table-cell text-xs font-600 text-gray-600">{lesson?.title || `#${v.lessonId}`}</td>
-                    <td className="table-cell"><span className="badge badge-green">Tayyor</span></td>
-                    <td className="table-cell text-xs text-gray-400">{v.createdAt ? dayjs(v.createdAt).format('DD MMM, YYYY') : '—'}</td>
-                    <td className="table-cell text-xs font-700 text-gray-600">{formatBytes(v.size)}</td>
-                    <td className="table-cell pr-4">
-                      <button onClick={async () => { await lessonVideosAPI.delete(v.id); load(); toast.success("O'chirildi"); }}
-                        className="w-7 h-7 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 flex items-center justify-center"><Trash2 size={13}/></button>
+                    <td className="table-cell">
+                        <span className="text-[11px] font-900 text-primary dark:text-primary uppercase tracking-tighter bg-primary/5 px-2 py-1 rounded-lg border border-primary/10">{lesson?.title || `#${v.lessonId}`}</span>
+                    </td>
+                    <td className="table-cell"><span className="badge badge-green">Ready</span></td>
+                    <td className="table-cell text-[11px] text-gray-400 dark:text-gray-500 font-700">{v.createdAt ? dayjs(v.createdAt).format('DD MMMM, YYYY') : '—'}</td>
+                    <td className="table-cell text-[11px] font-800 text-gray-600 dark:text-gray-400">{formatBytes(v.size)}</td>
+                    <td className="table-cell pr-6">
+                      <button onClick={async () => { if(confirm("O'chirilsinmi?")) { await lessonVideosAPI.delete(v.id); load(); toast.success("Video o'chirildi"); } }}
+                        className="w-8 h-8 rounded-xl bg-red-50 dark:bg-red-900/10 text-red-500 dark:text-red-500 hover:bg-red-500 hover:text-white dark:hover:bg-red-500 border border-transparent hover:border-red-600 transition-all flex items-center justify-center"><Trash2 size={14}/></button>
                     </td>
                   </tr>
                 );
