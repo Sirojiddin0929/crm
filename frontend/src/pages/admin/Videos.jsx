@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Plus, Trash2, Upload, Play, FileVideo, X, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { lessonVideosAPI, lessonsAPI, coursesAPI, groupsAPI } from '../../services/api';
-import { PageHeader, Dialog, Empty, Field, Select, SearchInput } from '../../components/UI';
+import { PageHeader, Dialog, Empty, Field, Select, SearchInput, Pagination } from '../../components/UI';
 import dayjs from 'dayjs';
 
 function formatBytes(bytes) {
@@ -395,6 +395,7 @@ function EditVideoModal({ open, onClose, video, lessons, groups, courses, onSucc
 }
 
 export default function Videos() {
+  const PER_PAGE = 12;
   const [videos, setVideos] = useState([]);
   const [lessons, setLessons] = useState([]);
   const [search, setSearch] = useState('');
@@ -407,20 +408,37 @@ export default function Videos() {
   const [filterCourse, setFilterCourse] = useState('');
   const [filterGroup, setFilterGroup] = useState('');
   const [activeVideo, setActiveVideo] = useState(null);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
-  const load = async () => {
+  const loadMeta = async () => {
     try {
-      const [v, l, c, g] = await Promise.all([
-        lessonVideosAPI.getAll({}),
-        lessonsAPI.getAll({}),
+      const [l, c, g] = await Promise.all([
+        lessonsAPI.getAll({ page: 1, limit: 1000 }),
         coursesAPI.getAll(),
-        groupsAPI.getAll(),
+        groupsAPI.getAll({ page: 1, limit: 1000 }),
       ]);
-      setVideos(v.data || []);
-      setLessons(l.data || []);
+      setLessons(l.data?.data || l.data || []);
       setCourses(c.data || []);
-      setGroups(g.data || []);
-      setActiveVideo(v.data?.[0] || null);
+      setGroups(g.data?.data || g.data || []);
+    } catch { toast.error('Xatolik'); }
+  };
+
+  const loadVideos = async () => {
+    try {
+      const res = await lessonVideosAPI.getAll({
+        page,
+        limit: PER_PAGE,
+        search: search || undefined,
+        courseId: filterCourse || undefined,
+        lessonId: filterLesson || undefined,
+        groupId: filterGroup || undefined,
+      });
+      const payload = res.data || {};
+      const list = payload.data || payload || [];
+      setVideos(list);
+      setTotal(payload.pagination?.total ?? list.length);
+      setActiveVideo(list[0] || null);
     } catch { toast.error('Xatolik'); }
   };
 
@@ -457,24 +475,21 @@ export default function Videos() {
   useEffect(() => {
     setFilterGroup('');
     setFilterLesson('');
+    setPage(1);
   }, [filterCourse]);
 
   useEffect(() => {
     setFilterLesson('');
+    setPage(1);
   }, [filterGroup]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { loadMeta(); }, []);
+  useEffect(() => {
+    const timer = setTimeout(() => { loadVideos(); }, 300);
+    return () => clearTimeout(timer);
+  }, [page, search, filterCourse, filterLesson, filterGroup]);
 
-  const filtered = videos.filter(v => {
-    const lesson = lessonMap[v.lessonId];
-    const group = lesson ? groupMap[lesson.groupId] : null;
-    const matchSearch = v.title?.toLowerCase().includes(search.toLowerCase()) || v.originalName?.toLowerCase().includes(search.toLowerCase());
-    // ✅ FIX: filter da ham String() bilan taqqoslash
-    const matchCourse = filterCourse ? String(group?.course?.id || group?.courseId) === String(filterCourse) : true;
-    const matchGroup = filterGroup ? String(lesson?.groupId) === String(filterGroup) : true;
-    const matchLesson = filterLesson ? String(v.lessonId) === String(filterLesson) : true;
-    return matchSearch && matchCourse && matchGroup && matchLesson;
-  });
+  const filtered = videos;
 
   useEffect(() => {
     if (!filtered.length) {
@@ -500,7 +515,7 @@ export default function Videos() {
     <div className="fade-in">
       <PageHeader
         title="Dars Videolari"
-        subtitle={`${videos.length} ta video`}
+        subtitle={`${total} ta video`}
         actions={
           <>
             
@@ -513,7 +528,7 @@ export default function Videos() {
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <div className="w-56"><SearchInput value={search} onChange={setSearch} placeholder="Video nomi" /></div>
+        <div className="w-56"><SearchInput value={search} onChange={v => { setSearch(v); setPage(1); }} placeholder="Video nomi" /></div>
         <div className="w-48">
           <Select value={filterCourse} onChange={e => setFilterCourse(e.target.value)} className="w-full text-xs">
             <option value="">Barcha kurslar</option>
@@ -647,13 +662,15 @@ export default function Videos() {
         </div>
       </div>
 
+      <Pagination page={page} total={total} perPage={PER_PAGE} onChange={setPage}/>
+
       <UploadModal
         open={uploadOpen}
         onClose={() => setUploadOpen(false)}
         lessons={lessons}
         groups={groups}
         courses={courses}
-        onSuccess={load}
+        onSuccess={loadVideos}
       />
 
       <EditVideoModal
@@ -663,7 +680,7 @@ export default function Videos() {
         lessons={lessons}
         groups={groups}
         courses={courses}
-        onSuccess={load}
+        onSuccess={loadVideos}
       />
 
       <Dialog
@@ -671,7 +688,7 @@ export default function Videos() {
         onClose={() => setDeleteId(null)}
         title="Videoni o'chirish"
         description="Bu videoni o'chirishni tasdiqlaysizmi?"
-        onConfirm={async () => { await lessonVideosAPI.delete(deleteId); setDeleteId(null); load(); toast.success("O'chirildi"); }}
+        onConfirm={async () => { await lessonVideosAPI.delete(deleteId); setDeleteId(null); loadVideos(); toast.success("O'chirildi"); }}
       />
     </div>
   );

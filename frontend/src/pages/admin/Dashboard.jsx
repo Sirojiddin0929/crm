@@ -1,9 +1,8 @@
 import  { useEffect, useState } from 'react';
 import {  Users, BookOpen, School,  Archive } from 'lucide-react';
-import { StatCard, PageHeader } from '../../components/UI';
+import { MiniAreaChart, StatCard, PageHeader } from '../../components/UI';
 import { studentsAPI, teachersAPI, coursesAPI, groupsAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 const chartData = [
   { name: 'Yan', talabalar: 32, guruhlar: 8 },
@@ -19,13 +18,21 @@ export default function Dashboard() {
   const [counts, setCounts] = useState({ students: 0, teachers: 0, courses: 0, groups: 0 });
 
   useEffect(() => {
-    Promise.all([studentsAPI.getAll(), teachersAPI.getAll(), coursesAPI.getAll(), groupsAPI.getAll()])
-      .then(([s, t, c, g]) => setCounts({
-        students: s.data?.length || 0,
-        teachers: t.data?.length || 0,
-        courses: c.data?.length || 0,
-        groups: g.data?.length || 0,
-      }))
+    Promise.all([
+      studentsAPI.getSummary(),
+      teachersAPI.getSummary(),
+      coursesAPI.getAll(),
+      groupsAPI.getAll({ page: 1, limit: 1 }),
+    ])
+      .then(([s, t, c, g]) => {
+        const groupsPayload = g.data || {};
+        setCounts({
+          students: s.data?.total || 0,
+          teachers: t.data?.total || 0,
+          courses: c.data?.length || 0,
+          groups: groupsPayload.pagination?.total || 0,
+        });
+      })
       .catch(() => {});
   }, []);
 
@@ -55,26 +62,14 @@ export default function Dashboard() {
               <p className="text-xs text-gray-400 font-500">Talabalar va guruhlar</p>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id="talabalar" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#7C3AED" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#7C3AED" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="guruhlar" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#2563EB" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9ca3af' }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9ca3af' }} />
-              <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #e5e7eb', fontSize: 12 }} />
-              <Area type="monotone" dataKey="talabalar" stroke="#7C3AED" strokeWidth={2} fill="url(#talabalar)" name="Talabalar" />
-              <Area type="monotone" dataKey="guruhlar" stroke="#2563EB" strokeWidth={2} fill="url(#guruhlar)" name="Guruhlar" />
-            </AreaChart>
-          </ResponsiveContainer>
+          <MiniAreaChart
+            data={chartData}
+            lines={[
+              { dataKey: 'talabalar', color: '#7C3AED', fill: 'rgba(124,58,237,0.12)', name: 'Talabalar' },
+              { dataKey: 'guruhlar', color: '#2563EB', fill: 'rgba(37,99,235,0.12)', name: 'Guruhlar' },
+            ]}
+            height={220}
+          />
         </div>
 
         <div className="card p-4">

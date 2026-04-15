@@ -16,9 +16,12 @@ export function StudentAuthProvider({ children }) {
     const u = res.data.user; // Get nested user object
     setUser(u);
     localStorage.setItem('student', JSON.stringify(u));
+    if (res.data.access_token) localStorage.setItem('student_token', res.data.access_token);
     // Clear other roles
     localStorage.removeItem('user');
     localStorage.removeItem('teacher');
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('teacher_token');
     return u;
   };
 
@@ -38,6 +41,7 @@ export function StudentAuthProvider({ children }) {
     try { await authAPI.logout(); } catch {}
     setUser(null);
     localStorage.removeItem('student');
+    localStorage.removeItem('student_token');
   };
 
   const updateUser = (newData) => {

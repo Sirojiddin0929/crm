@@ -9,7 +9,7 @@ import {
 } from '../../components/UI';
 
 const PER_PAGE = 10;
-const defaultForm = { fullName: '', email: '', birth_date: '', courseId: '', groupId: '' };
+const defaultForm = { fullName: '', email: '', password: '', birth_date: '', courseId: '', groupId: '' };
 
 function toDateInputValue(v) {
   if (!v) return '';
@@ -31,7 +31,9 @@ export default function Students() {
   const [selectedGroup, setSelectedGroup]   = useState(null);
   const [groupStudents, setGroupStudents]   = useState([]);
   const [search, setSearch]       = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage]           = useState(1);
+  const [total, setTotal]         = useState(0);
   const [tab, setTab]             = useState('active');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editItem, setEditItem]   = useState(null);
@@ -39,22 +41,38 @@ export default function Students() {
   const [photoFile, setPhotoFile] = useState(null);
   const [deleteId, setDeleteId]   = useState(null);
   const [loading, setLoading]     = useState(false);
+  const [bulkDrawerOpen, setBulkDrawerOpen] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkSearch, setBulkSearch] = useState('');
+  const [bulkCandidates, setBulkCandidates] = useState([]);
+  const [bulkSelectedIds, setBulkSelectedIds] = useState([]);
   const fileRef = useRef(null);
 
-  const load = async () => {
+  const loadMeta = async () => {
     try {
-      const [s, g, c] = await Promise.all([
-        studentsAPI.getAll(),
-        groupsAPI.getAll(),
+      const [g, c] = await Promise.all([
+        groupsAPI.getAll({ compact: true }),
         coursesAPI.getAll(),
       ]);
-      console.log('STUDENTS:', s.data);
-      setStudents(s.data || []);
-      setGroups(g.data || []);
+      setGroups(g.data?.data || g.data || []);
       setCourses(c.data || []);
     } catch { toast.error('Xatolik yuz berdi'); }
   };
-  useEffect(() => { load(); }, []);
+  const loadStudents = async () => {
+    try {
+      const status = tab === 'active' ? 'ACTIVE' : 'INACTIVE';
+      const r = await studentsAPI.getSearchSummary({ page, limit: PER_PAGE, search: debouncedSearch, status });
+      const payload = r.data || {};
+      setStudents(payload.data || []);
+      setTotal(payload.pagination?.total ?? (payload.data || []).length);
+    } catch { toast.error('Xatolik yuz berdi'); }
+  };
+  useEffect(() => { loadMeta(); }, []);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+  useEffect(() => { loadStudents(); }, [page, debouncedSearch, tab]);
 
   const courseGroups = useMemo(() => {
     if (!selectedCourse) return [];
@@ -82,23 +100,10 @@ export default function Students() {
     setView('students');
   };
 
-  const allFiltered = useMemo(() => {
-    let list = students.filter(s =>
-      tab === 'active' ? s.status !== 'INACTIVE' : s.status === 'INACTIVE'
-    );
-    if (search) list = list.filter(s =>
-      s.fullName?.toLowerCase().includes(search.toLowerCase()) ||
-      s.email?.toLowerCase().includes(search.toLowerCase())
-    );
-    return list;
-  }, [students, search, tab]);
-
-  const paginated = allFiltered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-
   const openAdd = () => { setEditItem(null); setForm(defaultForm); setPhotoFile(null); setDrawerOpen(true); };
   const openEdit = s => {
     setEditItem(s);
-    setForm({ fullName: s.fullName || '', email: s.email || '', birth_date: toDateInputValue(s.birth_date), courseId: '', groupId: '' });
+    setForm({ fullName: s.fullName || '', email: s.email || '', password: '', birth_date: toDateInputValue(s.birth_date), courseId: '', groupId: '' });
     setPhotoFile(null);
     setDrawerOpen(true);
   };
@@ -112,21 +117,24 @@ export default function Students() {
         if (photoFile) { const fd = new FormData(); fd.append('photo', photoFile); await studentsAPI.uploadPhoto(editItem.id, fd); }
         toast.success('Yangilandi');
       } else {
-        const created = await studentsAPI.create(payload);
+        if (!form.password || form.password.length < 6) {
+          throw new Error("Parol kamida 6 ta belgidan iborat bo'lishi kerak");
+        }
+        const created = await studentsAPI.create({ ...payload, password: form.password });
         const sid = created?.data?.id || created?.data?.student?.id;
         if (photoFile && sid) { const fd = new FormData(); fd.append('photo', photoFile); await studentsAPI.uploadPhoto(sid, fd); }
         if (form.groupId && sid) { try { await groupsAPI.addStudent(Number(form.groupId), { studentId: sid }); } catch {} }
         toast.success("Talaba qo'shildi");
       }
-      setDrawerOpen(false); load();
+      setDrawerOpen(false); loadStudents();
       if (selectedGroup) { const r = await groupsAPI.getStudents(selectedGroup.id); setGroupStudents(r.data || []); }
-    } catch (e) { toast.error(e.response?.data?.message || 'Xatolik'); }
+    } catch (e) { toast.error(e?.response?.data?.message || e?.message || 'Xatolik'); }
     finally { setLoading(false); }
   };
 
   const handleDelete = async () => {
     try {
-      await studentsAPI.delete(deleteId); toast.success("O'chirildi"); load();
+      await studentsAPI.delete(deleteId); toast.success("O'chirildi"); loadStudents();
       if (selectedGroup) { const r = await groupsAPI.getStudents(selectedGroup.id); setGroupStudents(r.data || []); }
     } catch { toast.error('Xatolik'); }
   };
@@ -136,6 +144,58 @@ export default function Students() {
     if (!file) return;
     if (!file.type.startsWith('image/')) { toast.error('Faqat rasm fayli'); return; }
     setPhotoFile(file);
+  };
+
+  const openBulkAddDrawer = async () => {
+    if (!selectedGroup?.id) return;
+    setBulkLoading(true);
+    try {
+      const r = await studentsAPI.getAll({ compact: true, status: 'ACTIVE', page: 1, limit: 1000 });
+      const all = r.data?.data || r.data || [];
+      const inGroupIds = new Set(groupStudents.map(s => Number(s.id)));
+      setBulkCandidates(all.filter(s => !inGroupIds.has(Number(s.id))));
+      setBulkSelectedIds([]);
+      setBulkSearch('');
+      setBulkDrawerOpen(true);
+    } catch {
+      toast.error("Talabalarni yuklashda xatolik");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const filteredBulkCandidates = useMemo(() => {
+    const q = bulkSearch.trim().toLowerCase();
+    if (!q) return bulkCandidates;
+    return bulkCandidates.filter(s =>
+      `${s.fullName || ''} ${s.email || ''}`.toLowerCase().includes(q)
+    );
+  }, [bulkCandidates, bulkSearch]);
+
+  const toggleBulkStudent = id => {
+    setBulkSelectedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+  };
+
+  const submitBulkAdd = async () => {
+    if (!selectedGroup?.id) return;
+    if (!bulkSelectedIds.length) return toast.error("Kamida bitta talaba tanlang");
+    setBulkLoading(true);
+    try {
+      const r = await groupsAPI.addStudentsBulk(selectedGroup.id, { studentIds: bulkSelectedIds });
+      toast.success(r?.data?.message || "Talabalar guruhga qo'shildi");
+      const refreshed = await groupsAPI.getStudents(selectedGroup.id);
+      const list = (refreshed.data || []).map(item =>
+        item.student ? { ...item.student, groupStudentId: item.id, created_at: item.created_at } : item
+      );
+      setGroupStudents(list);
+      setBulkDrawerOpen(false);
+      loadStudents();
+    } catch (e) {
+      const message = e?.response?.data?.message;
+      toast.error(Array.isArray(message) ? message[0] : (message || "Qo'shishda xatolik"));
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   const DAYS_UZ = { MONDAY:'Du', TUESDAY:'Se', WEDNESDAY:'Ch', THURSDAY:'Pa', FRIDAY:'Ju', SATURDAY:'Sh', SUNDAY:'Ya' };
@@ -245,7 +305,16 @@ export default function Students() {
   if (view === 'students') return (
     <div className="fade-in">
       <PageHeader title={selectedGroup?.name || 'Talabalar'} subtitle={`${groupStudents.length} ta guruhdagi talabalar`}
-        actions={<button className="btn-primary py-2.5 px-6 text-xs font-900 uppercase tracking-widest shadow-lg shadow-primary/25" onClick={openAdd}><Plus size={14}/> Talaba qo'shish</button>}/>
+        actions={
+          <div className="flex gap-2">
+            <button className="btn-secondary py-2.5 px-6 text-xs font-900 uppercase tracking-widest" onClick={openBulkAddDrawer}>
+              Bir nechta qo'shish
+            </button>
+            <button className="btn-primary py-2.5 px-6 text-xs font-900 uppercase tracking-widest shadow-lg shadow-primary/25" onClick={openAdd}>
+              <Plus size={14}/> Talaba qo'shish
+            </button>
+          </div>
+        }/>
       <Breadcrumb/>
       <div className="card overflow-hidden shadow-xl shadow-primary/5">
         <div className="overflow-x-auto custom-scrollbar">
@@ -285,14 +354,26 @@ export default function Students() {
           </table>
         </div>
       </div>
-      <DrawerForm {...drawerProps}/>{dialogEl}
+      <DrawerForm {...drawerProps}/>
+      <BulkAddDrawer
+        open={bulkDrawerOpen}
+        onClose={() => setBulkDrawerOpen(false)}
+        loading={bulkLoading}
+        search={bulkSearch}
+        setSearch={setBulkSearch}
+        students={filteredBulkCandidates}
+        selectedIds={bulkSelectedIds}
+        onToggle={toggleBulkStudent}
+        onSubmit={submitBulkAdd}
+      />
+      {dialogEl}
     </div>
   );
 
   // ── VIEW: ALL ──
   return (
     <div className="fade-in">
-      <PageHeader title="Talabalar bazasi" subtitle={`${allFiltered.length} ta umumiy talabalar ro'yxati`}
+      <PageHeader title="Talabalar bazasi" subtitle={`${total} ta umumiy talabalar ro'yxati`}
         actions={<button className="btn-primary py-2.5 px-6 text-xs font-900 uppercase tracking-widest shadow-lg shadow-primary/25" onClick={openAdd}><Plus size={14}/> Talaba qo'shish</button>}/>
       <Breadcrumb/>
       <div className="card overflow-hidden shadow-xl shadow-primary/5">
@@ -320,9 +401,9 @@ export default function Students() {
               ))}
             </tr></thead>
             <tbody>
-              {paginated.length === 0
+              {students.length === 0
                 ? <tr><td colSpan={7} className="py-20"><Empty text="Talabalar topilmadi"/></td></tr>
-                : paginated.map((s, i) => (
+                : students.map((s, i) => (
                 <tr key={s.id} className="hover:bg-gray-50/60 dark:hover:bg-white/5 transition-all">
                   <td className="table-cell pl-6 text-gray-400 font-900 text-[10px]">{(page-1)*PER_PAGE+i+1}</td>
                   <td className="table-cell">
@@ -355,10 +436,41 @@ export default function Students() {
             </tbody>
           </table>
         </div>
-        <Pagination page={page} total={allFiltered.length} perPage={PER_PAGE} onChange={setPage}/>
+        <Pagination page={page} total={total} perPage={PER_PAGE} onChange={setPage}/>
       </div>
       <DrawerForm {...drawerProps}/>{dialogEl}
     </div>
+  );
+}
+
+function BulkAddDrawer({ open, onClose, loading, search, setSearch, students, selectedIds, onToggle, onSubmit }) {
+  return (
+    <Drawer open={open} onClose={onClose} title="Guruhga talabalar qo'shish">
+      <div className="space-y-3">
+        <Input placeholder="Ism yoki email bo'yicha qidirish..." value={search} onChange={e => setSearch(e.target.value)} />
+        <div className="max-h-[420px] overflow-auto border border-gray-100 rounded-xl p-2 space-y-1">
+          {students.length === 0 ? (
+            <p className="text-xs text-gray-400 py-6 text-center">Qo'shish uchun mos talabalar topilmadi</p>
+          ) : students.map(s => (
+            <label key={s.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+              <input type="checkbox" checked={selectedIds.includes(s.id)} onChange={() => onToggle(s.id)} />
+              <Avatar name={s.fullName} photo={s.photo} size="sm" />
+              <div className="min-w-0">
+                <p className="text-sm font-700 text-gray-800 truncate">{s.fullName}</p>
+                <p className="text-xs text-gray-400 truncate">{s.email}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+        <p className="text-xs text-gray-500">{selectedIds.length} ta talaba tanlandi</p>
+        <div className="flex gap-3 pt-2">
+          <button onClick={onClose} className="btn-secondary flex-1 justify-center">Bekor qilish</button>
+          <button onClick={onSubmit} disabled={loading || !selectedIds.length} className="btn-primary flex-1 justify-center">
+            {loading ? 'Saqlanmoqda...' : "Tanlanganlarni qo'shish"}
+          </button>
+        </div>
+      </div>
+    </Drawer>
   );
 }
 
@@ -368,9 +480,14 @@ function DrawerForm({ drawerOpen, setDrawerOpen, editItem, form, setForm, photoF
       {!editItem && <p className="text-xs text-gray-400 -mt-2 mb-1 font-500">Bu yerda siz yangi talabani qo'shishingiz mumkin.</p>}
       <Field label="Email" required><Input type="email" placeholder="student@gmail.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}/></Field>
       <Field label="Talaba FIO" required><Input placeholder="Ism Familiya" value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })}/></Field>
+      {!editItem && (
+        <Field label="Parol" required>
+          <Input type="password" placeholder="Kamida 6 ta belgi" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}/>
+        </Field>
+      )}
       <Field label="Tug'ilgan sana" required><Input type="date" value={form.birth_date} onChange={e => setForm({ ...form, birth_date: e.target.value })}/></Field>
       {!editItem && (
-        <Field label="Guruh">
+        <Field label="Kurs">
           <Select value={form.courseId} onChange={e => setForm({ ...form, courseId: e.target.value, groupId: '' })}>
             <option value="">Kursni tanlang</option>
             {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}

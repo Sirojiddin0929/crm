@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Star, Trash2, Search, Edit2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ratingsAPI, teachersAPI, lessonsAPI, groupsAPI, coursesAPI } from '../../services/api';
-import { PageHeader, Avatar, Dialog, Empty, Field } from '../../components/UI';
+import { PageHeader, Avatar, Dialog, Empty, Field, Pagination } from '../../components/UI';
 import dayjs from 'dayjs';
 
 // ── Half-star reyting komponenti ─────────────────────────
@@ -260,6 +260,7 @@ function RatingModal({ open, onClose, onSave, teachers, lessons, groups, courses
 
 // ── Asosiy sahifa ─────────────────────────────────────────
 export default function Ratings() {
+  const PER_PAGE = 10;
   const [ratings,   setRatings]  = useState([]);
   const [teachers,  setTeachers] = useState([]);
   const [lessons,   setLessons]  = useState([]);
@@ -270,51 +271,58 @@ export default function Ratings() {
   const [deleteId,  setDeleteId]  = useState(null);
   const [search,    setSearch]    = useState('');
   const [filterTeacher, setFilterTeacher] = useState('');
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
   const activeTeachers = useMemo(() => {
     return teachers.filter(t => String(t.status || '').toUpperCase() === 'ACTIVE');
   }, [teachers]);
 
-  const load = async () => {
+  const loadMeta = async () => {
     try {
-      const [r, t, l, g, c] = await Promise.all([
-        ratingsAPI.getAll(),
-        teachersAPI.getAll(),
-        lessonsAPI.getAll({}),
-        groupsAPI.getAll(),
+      const [t, l, g, c] = await Promise.all([
+        teachersAPI.getSearchSummary({ page: 1, limit: 200, status: 'ACTIVE' }),
+        lessonsAPI.getAll({ page: 1, limit: 500 }),
+        groupsAPI.getAll({ page: 1, limit: 500, status: 'ACTIVE' }),
         coursesAPI.getAll(),
       ]);
-      setRatings(r.data || []);
-      setTeachers(t.data || []);
-      setLessons(l.data || []);
-      setGroups(g.data || []);
+      setTeachers((t.data?.data || t.data || []));
+      setLessons((l.data?.data || l.data || []));
+      setGroups((g.data?.data || g.data || []));
       setCourses(c.data || []);
     } catch { toast.error('Xatolik'); }
   };
-  useEffect(() => { load(); }, []);
+  const loadRatings = async () => {
+    try {
+      const r = await ratingsAPI.getAll({
+        page,
+        limit: PER_PAGE,
+        search: search || undefined,
+        teacherId: filterTeacher || undefined,
+      });
+      const payload = r.data || {};
+      const list = payload.data || payload || [];
+      setRatings(list);
+      setTotal(payload.pagination?.total ?? list.length);
+    } catch { toast.error('Xatolik'); }
+  };
+
+  useEffect(() => { loadMeta(); }, []);
+  useEffect(() => {
+    const timer = setTimeout(() => { loadRatings(); }, 300);
+    return () => clearTimeout(timer);
+  }, [page, search, filterTeacher]);
 
   const getTeacher = r => r.teacher || teachers.find(t => t.id === r.teacherId) || null;
   const getLesson  = r => r.lesson || lessons.find(l => l.id === r.lessonId) || null;
 
-  const filtered = useMemo(() => {
-    let list = [...ratings].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-    if (filterTeacher) list = list.filter(r => String(r.teacher?.id ?? r.teacherId) === String(filterTeacher));
-    if (search) {
-      const q = search.toLowerCase();
-      list = list.filter(r => 
-        getTeacher(r)?.fullName?.toLowerCase().includes(q) || 
-        getLesson(r)?.title?.toLowerCase().includes(q) || 
-        r.comment?.toLowerCase().includes(q)
-      );
-    }
-    return list;
-  }, [ratings, filterTeacher, search, teachers, lessons]);
+  const filtered = ratings;
 
   return (
     <div className="fade-in">
       <PageHeader 
         title="Reytinglar" 
-        subtitle={`${ratings.length} ta baho`}
+        subtitle={`${total} ta baho`}
         actions={<button className="btn-primary" onClick={() => { setEditData(null); setModalOpen(true); }}><Star size={14}/> Baho berish</button>}
       />
 
@@ -322,9 +330,9 @@ export default function Ratings() {
         <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
           <div className="relative flex-1">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Qidirish..." className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-200 text-xs outline-none bg-gray-50"/>
+            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Qidirish..." className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-200 text-xs outline-none bg-gray-50"/>
           </div>
-          <select value={filterTeacher} onChange={e => setFilterTeacher(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-200 text-xs font-600 bg-white">
+          <select value={filterTeacher} onChange={e => { setFilterTeacher(e.target.value); setPage(1); }} className="px-3 py-2 rounded-lg border border-gray-200 text-xs font-600 bg-white">
             <option value="">Barcha o'qituvchilar</option>
             {activeTeachers.map(t => <option key={t.id} value={t.id}>{t.fullName}</option>)}
           </select>
@@ -334,17 +342,18 @@ export default function Ratings() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50/50">
-                {['#', "O'qituvchi", 'Dars', 'Baho', 'Izoh', 'Sana', 'Amallar'].map(h => (
+                {['#', "Talaba", "O'qituvchi", 'Dars', 'Baho', 'Izoh', 'Sana', 'Amallar'].map(h => (
                   <th key={h} className="px-4 py-3 text-[11px] font-700 text-gray-400 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={7}><Empty icon="⭐" text="Baholar topilmadi"/></td></tr>
+                <tr><td colSpan={8}><Empty icon="⭐" text="Baholar topilmadi"/></td></tr>
               ) : filtered.map((r, i) => (
                 <tr key={r.id} className="border-t border-gray-50 hover:bg-gray-50/50 transition-colors">
-                  <td className="px-4 py-3 text-xs text-gray-400 font-600">{i + 1}</td>
+                  <td className="px-4 py-3 text-xs text-gray-400 font-600">{(page - 1) * PER_PAGE + i + 1}</td>
+                  <td className="px-4 py-3 text-xs font-700 text-gray-700">{r.student?.fullName || (r.studentId ? `Talaba #${r.studentId}` : '—')}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <Avatar name={getTeacher(r)?.fullName} photo={getTeacher(r)?.photo} size="sm"/>
@@ -354,7 +363,7 @@ export default function Ratings() {
                   <td className="px-4 py-3 text-xs text-gray-500">{getLesson(r)?.title || '—'}</td>
                   <td className="px-4 py-3"><StarRating value={r.score} readonly size={14}/></td>
                   <td className="px-4 py-3 text-xs text-gray-500 max-w-xs truncate">{r.comment || '—'}</td>
-                  <td className="px-4 py-3 text-xs text-gray-400">{dayjs(r.createdAt).format('DD.MM.YYYY')}</td>
+                  <td className="px-4 py-3 text-xs text-gray-400">{dayjs(r.createdAt || r.created_at).format('DD.MM.YYYY')}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
                       <button onClick={() => { setEditData(r); setModalOpen(true); }} className="p-1.5 rounded-md bg-blue-50 text-blue-500 hover:bg-blue-100"><Edit2 size={11}/></button>
@@ -366,12 +375,13 @@ export default function Ratings() {
             </tbody>
           </table>
         </div>
+        <Pagination page={page} total={total} perPage={PER_PAGE} onChange={setPage}/>
       </div>
 
       <RatingModal
         open={modalOpen}
         onClose={() => { setModalOpen(false); setEditData(null); }}
-        onSave={load}
+        onSave={loadRatings}
         teachers={activeTeachers}
         lessons={lessons}
         groups={groups}
@@ -384,7 +394,7 @@ export default function Ratings() {
         title="Bahoni o'chirish" description="Bu bahoni o'chirishni tasdiqlaysizmi?"
         onConfirm={async () => {
           await ratingsAPI.delete(deleteId);
-          setDeleteId(null); load();
+          setDeleteId(null); loadRatings();
           toast.success("O'chirildi");
         }}
       />

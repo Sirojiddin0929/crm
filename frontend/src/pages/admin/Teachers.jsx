@@ -9,7 +9,7 @@ import {
 } from '../../components/UI';
 
 const PER_PAGE = 10;
-const defaultForm = { fullName: '', email: '', position: '', experience: '' };
+const defaultForm = { fullName: '', email: '', password: '', position: '', experience: '' };
 const DAYS_UZ = { MONDAY:'Du', TUESDAY:'Se', WEDNESDAY:'Ch', THURSDAY:'Pa', FRIDAY:'Ju', SATURDAY:'Sh', SUNDAY:'Ya' };
 
 function formatDate(v) {
@@ -23,7 +23,9 @@ export default function Teachers() {
   const [teachers, setTeachers]     = useState([]);
   const [courses, setCourses]       = useState([]);
   const [search, setSearch]         = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage]             = useState(1);
+  const [total, setTotal]           = useState(0);
   const [tab, setTab]               = useState('active');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editItem, setEditItem]     = useState(null);
@@ -41,26 +43,22 @@ export default function Teachers() {
 
   const load = async () => {
     try {
-      const [t, c] = await Promise.all([teachersAPI.getAll(), coursesAPI.getAll()]);
-      setTeachers(t.data || []);
+      const status = tab === 'active' ? 'ACTIVE' : 'INACTIVE';
+      const [t, c] = await Promise.all([
+        teachersAPI.getSearchSummary({ page, limit: PER_PAGE, search: debouncedSearch, status }),
+        coursesAPI.getAll(),
+      ]);
+      const payload = t.data || {};
+      setTeachers(payload.data || []);
+      setTotal(payload.pagination?.total ?? (payload.data || []).length);
       setCourses(c.data || []);
     } catch { toast.error('Xatolik'); }
   };
-  useEffect(() => { load(); }, []);
-
-  const filtered = useMemo(() => {
-    let list = teachers.filter(t =>
-      tab === 'active' ? t.status !== 'INACTIVE' : t.status === 'INACTIVE'
-    );
-    if (search) list = list.filter(t =>
-      t.fullName?.toLowerCase().includes(search.toLowerCase()) ||
-      t.email?.toLowerCase().includes(search.toLowerCase()) ||
-      t.position?.toLowerCase().includes(search.toLowerCase())
-    );
-    return list;
-  }, [teachers, search, tab]);
-
-  const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+  useEffect(() => { load(); }, [page, debouncedSearch, tab]);
 
   // ── Teacher bosish → guruhlarini yuklash ──
   const openTeacher = async teacher => {
@@ -133,7 +131,7 @@ export default function Teachers() {
 
   const openEdit = t => {
     setEditItem(t);
-    setForm({ fullName: t.fullName || '', email: t.email || '', position: t.position || '', experience: t.experience || '' });
+    setForm({ fullName: t.fullName || '', email: t.email || '', password: '', position: t.position || '', experience: t.experience || '' });
     setPhotoFile(null);
     setDrawerOpen(true);
   };
@@ -148,13 +146,16 @@ export default function Teachers() {
         toast.success('Yangilandi');
         if (selectedTeacher?.id === editItem.id) setSelectedTeacher({ ...selectedTeacher, ...payload });
       } else {
-        const created = await teachersAPI.create(payload);
+        if (!form.password || form.password.length < 6) {
+          throw new Error("Parol kamida 6 ta belgidan iborat bo'lishi kerak");
+        }
+        const created = await teachersAPI.create({ ...payload, password: form.password });
         const tid = created?.data?.id || created?.data?.teacher?.id;
         if (photoFile && tid) { const fd = new FormData(); fd.append('photo', photoFile); await teachersAPI.uploadPhoto(tid, fd); }
         toast.success("O'qituvchi qo'shildi");
       }
       setDrawerOpen(false); load();
-    } catch (e) { toast.error(e.response?.data?.message || 'Xatolik'); }
+    } catch (e) { toast.error(e?.response?.data?.message || e?.message || 'Xatolik'); }
     finally { setLoading(false); }
   };
 
@@ -178,6 +179,11 @@ export default function Teachers() {
       {!editItem && <p className="text-xs text-gray-400 -mt-2 mb-2 font-500">Yangi o'qituvchini qo'shishingiz mumkin.</p>}
       <Field label="FIO" required><Input placeholder="Ism Familiya" value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })}/></Field>
       <Field label="Email" required><Input type="email" placeholder="teacher@gmail.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}/></Field>
+      {!editItem && (
+        <Field label="Parol" required>
+          <Input type="password" placeholder="Kamida 6 ta belgi" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}/>
+        </Field>
+      )}
       <Field label="Lavozim" required>
         <Select value={form.position} onChange={e => setForm({ ...form, position: e.target.value })}>
           <option value="">Tanlang</option>
@@ -373,7 +379,7 @@ export default function Teachers() {
     <div className="fade-in">
       <PageHeader
         title="O'qituvchilar bazasi"
-        subtitle={`${filtered.length} ta umumiy o'qituvchilar ro'yxati`}
+        subtitle={`${total} ta umumiy o'qituvchilar ro'yxati`}
         actions={
           <button className="btn-primary py-2.5 px-6 text-xs font-900 uppercase tracking-widest shadow-lg shadow-primary/25" onClick={() => { setEditItem(null); setForm(defaultForm); setPhotoFile(null); setDrawerOpen(true); }}>
             <Plus size={14}/> O'qituvchi qo'shish
@@ -400,9 +406,9 @@ export default function Teachers() {
               ))}
             </tr></thead>
             <tbody>
-              {paginated.length === 0 ? (
+              {teachers.length === 0 ? (
                 <tr><td colSpan={6} className="py-20"><Empty text="O'qituvchilar topilmadi"/></td></tr>
-              ) : paginated.map((t, i) => (
+              ) : teachers.map((t, i) => (
                 <tr key={t.id} onClick={() => openTeacher(t)}
                   className="hover:bg-gray-50/60 dark:hover:bg-white/5 transition-all cursor-pointer group">
                   <td className="table-cell pl-6 text-gray-400 font-900 text-[10px]">#{(page-1)*PER_PAGE+i+1}</td>
@@ -435,7 +441,7 @@ export default function Teachers() {
             </tbody>
           </table>
         </div>
-        <Pagination page={page} total={filtered.length} perPage={PER_PAGE} onChange={setPage}/>
+        <Pagination page={page} total={total} perPage={PER_PAGE} onChange={setPage}/>
       </div>
       {drawerEl}{dialogEl}
     </div>

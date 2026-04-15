@@ -1,36 +1,74 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, BookOpen, School,
-  ClipboardList, Video, Star, CheckSquare,
   Settings, LogOut, ChevronLeft, ChevronRight,
-  Sun, Moon, Search, Bell, User, Menu, X,
-  CreditCard, BarChart3, ShoppingCart, Radio
+  Sun, Moon, Search, Bell, BarChart3, ShoppingCart
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { TeacherAuthProvider, useTeacherAuth } from './context/TeacherAuthContext';
 import { StudentAuthProvider, useStudentAuth } from './context/StudentAuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContent';
-import LoginPage from './pages/Login';
-import Dashboard from './pages/admin/Dashboard';
-import Students from './pages/admin/Students';
-import Teachers from './pages/admin/Teachers';
-import Groups from './pages/admin/Groups';
-import Videos from './pages/admin/Videos';
-import Manage from './pages/admin/Manage';
-import Ratings from './pages/admin/Rating';
-import TeacherLogin from './pages/teacher/Login';
-import TeacherDashboard from './pages/teacher/Dashboard';
-import TeacherLessons from './pages/teacher/Lessons';
-import TeacherHomework from './pages/teacher/Homework';
-import TeacherGroups from './pages/teacher/Groups';
-import { TeacherAttendance, TeacherVideos, TeacherRatings } from './pages/teacher/AttendanceVideosRatings';
-import StudentLogin from './pages/student/Login';
-import StudentDashboard from './pages/student/Dashboard';
-import { StudentGroups, StudentLessons, StudentHomework, StudentAttendance, StudentVideos, StudentRatings, StudentIndicators, StudentShop, StudentNotifications } from './pages/student/Pages';
-import Profile from './pages/Profile';
-import { Avatar, Empty } from './components/UI';
+import { Avatar } from './components/UI';
+import { subscribeGlobalLoading } from './services/api';
+
+const LoginPage = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
+const Students = lazy(() => import('./pages/admin/Students'));
+const Teachers = lazy(() => import('./pages/admin/Teachers'));
+const Groups = lazy(() => import('./pages/admin/Groups'));
+const Manage = lazy(() => import('./pages/admin/Manage'));
+const TeacherLogin = lazy(() => import('./pages/teacher/Login'));
+const TeacherDashboard = lazy(() => import('./pages/teacher/Dashboard'));
+const TeacherLessons = lazy(() => import('./pages/teacher/Lessons'));
+const TeacherHomework = lazy(() => import('./pages/teacher/Homework'));
+const TeacherGroups = lazy(() => import('./pages/teacher/Groups'));
+const StudentLogin = lazy(() => import('./pages/student/Login'));
+const StudentDashboard = lazy(() => import('./pages/student/Dashboard'));
+const Profile = lazy(() => import('./pages/Profile'));
+
+const lazyNamed = (factory, exportName) =>
+  lazy(() => factory().then(module => ({ default: module[exportName] })));
+
+const TeacherAttendance = lazyNamed(() => import('./pages/teacher/AttendanceVideosRatings'), 'TeacherAttendance');
+const StudentGroups = lazyNamed(() => import('./pages/student/Pages'), 'StudentGroups');
+const StudentLessons = lazyNamed(() => import('./pages/student/Pages'), 'StudentLessons');
+const StudentIndicators = lazyNamed(() => import('./pages/student/Pages'), 'StudentIndicators');
+const StudentShop = lazyNamed(() => import('./pages/student/Pages'), 'StudentShop');
+const StudentNotifications = lazyNamed(() => import('./pages/student/Pages'), 'StudentNotifications');
+
+function RouteLoader() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center">
+      <div className="rounded-2xl border border-gray-100 bg-white px-5 py-3 text-sm font-800 text-gray-500 shadow-sm">
+        Yuklanmoqda...
+      </div>
+    </div>
+  );
+}
+
+function GlobalLoadingNotice() {
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = subscribeGlobalLoading(setLoading);
+    return unsubscribe;
+  }, []);
+
+  if (!loading) return null;
+
+  return (
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[80]">
+      <div className="flex items-center gap-2 rounded-2xl border border-emerald-100 bg-white/95 px-4 py-2 shadow-lg backdrop-blur dark:border-emerald-400/20 dark:bg-[#12121A]/95">
+        <span className="w-3 h-3 rounded-full border-2 border-emerald-200 border-t-emerald-500 animate-spin" />
+        <span className="text-[11px] font-900 uppercase tracking-widest text-emerald-600 dark:text-emerald-300">
+          Loading...
+        </span>
+      </div>
+    </div>
+  );
+}
 
 function Protected({ children }) {
   const { user } = useAuth();
@@ -187,9 +225,7 @@ function AdminShell() {
     { path: '/admin/teachers', label: "O'qituvchilar", icon: Users },
     { path: '/admin/students', label: 'Talabalar', icon: BookOpen },
     { path: '/admin/groups', label: 'Guruhlar', icon: School },
-    { path: '/admin/videos', label: 'Videolar', icon: Video },
     { path: '/admin/manage', label: 'Boshqarish', icon: Settings },
-    { path: '/admin/ratings', label: 'Baholash', icon: Star },
     { path: '/admin/profile', label: 'Profil / Sozlamalar', icon: Settings },
   ];
 
@@ -216,7 +252,6 @@ function TeacherShell() {
   const links = [
     { path: '/teacher/dashboard', label: 'Dashboard',  icon: LayoutDashboard, exact: true },
     { path: '/teacher/groups',    label: 'Guruhlar',   icon: School },
-    { path: '/teacher/ratings',   label: 'Reyting',    icon: Star },
     { path: '/teacher/profile',   label: 'Profil',     icon: Settings },
   ];
 
@@ -272,48 +307,48 @@ export default function App() {
         <TeacherAuthProvider>
           <StudentAuthProvider>
             <BrowserRouter>
-              <Routes>
-                {/* Admin */}
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/admin" element={<Protected><AdminShell /></Protected>}>
-                  <Route index element={<Dashboard />} />
-                  <Route path="students" element={<Students />} />
-                  <Route path="teachers" element={<Teachers />} />
-                  <Route path="groups" element={<Groups />} />
-                  <Route path="videos" element={<Videos />} />
-                  <Route path="manage" element={<Manage />} />
-                  <Route path="ratings" element={<Ratings />} />
-                  <Route path="profile" element={<Profile />} />
-                </Route>
+              <Suspense fallback={<RouteLoader />}>
+                <Routes>
+                  {/* Admin */}
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/admin" element={<Protected><AdminShell /></Protected>}>
+                    <Route index element={<Dashboard />} />
+                    <Route path="students" element={<Students />} />
+                    <Route path="teachers" element={<Teachers />} />
+                    <Route path="groups" element={<Groups />} />
+                    <Route path="manage" element={<Manage />} />
+                    <Route path="profile" element={<Profile />} />
+                  </Route>
 
-                {/* Teacher */}
-                <Route path="/teacher/login" element={<TeacherLogin />} />
-                <Route path="/teacher" element={<ProtectedTeacher><TeacherShell /></ProtectedTeacher>}>
-                  <Route index element={<Navigate to="dashboard" replace />} />
-                  <Route path="dashboard" element={<TeacherDashboard />} />
-                  <Route path="groups" element={<TeacherGroups />} />
-                  <Route path="lessons" element={<TeacherLessons />} />
-                  <Route path="homework" element={<TeacherHomework />} />
-                  <Route path="attendance" element={<TeacherAttendance />} />
-                  <Route path="ratings" element={<TeacherRatings />} />
-                  <Route path="profile" element={<Profile />} />
-                </Route>
+                  {/* Teacher */}
+                  <Route path="/teacher/login" element={<TeacherLogin />} />
+                  <Route path="/teacher" element={<ProtectedTeacher><TeacherShell /></ProtectedTeacher>}>
+                    <Route index element={<Navigate to="dashboard" replace />} />
+                    <Route path="dashboard" element={<TeacherDashboard />} />
+                    <Route path="groups" element={<TeacherGroups />} />
+                    <Route path="lessons" element={<TeacherLessons />} />
+                    <Route path="homework" element={<TeacherHomework />} />
+                    <Route path="attendance" element={<TeacherAttendance />} />
+                    <Route path="profile" element={<Profile />} />
+                  </Route>
 
-                {/* Student */}
-                <Route path="/student/login" element={<StudentLogin />} />
-                <Route path="/student" element={<ProtectedStudent><StudentShell /></ProtectedStudent>}>
-                  <Route index element={<Navigate to="dashboard" replace />} />
-                  <Route path="dashboard" element={<StudentDashboard />} />
-                  <Route path="groups" element={<StudentGroups />} />
-                  <Route path="groups/:groupId/lessons" element={<StudentLessons />} />
-                  <Route path="indicators" element={<StudentIndicators />} />
-                  <Route path="notifications" element={<StudentNotifications />} />
-                  <Route path="shop" element={<StudentShop />} />
-                  <Route path="profile" element={<Profile />} />
-                </Route>
+                  {/* Student */}
+                  <Route path="/student/login" element={<StudentLogin />} />
+                  <Route path="/student" element={<ProtectedStudent><StudentShell /></ProtectedStudent>}>
+                    <Route index element={<Navigate to="dashboard" replace />} />
+                    <Route path="dashboard" element={<StudentDashboard />} />
+                    <Route path="groups" element={<StudentGroups />} />
+                    <Route path="groups/:groupId/lessons" element={<StudentLessons />} />
+                    <Route path="indicators" element={<StudentIndicators />} />
+                    <Route path="notifications" element={<StudentNotifications />} />
+                    <Route path="shop" element={<StudentShop />} />
+                    <Route path="profile" element={<Profile />} />
+                  </Route>
 
-                <Route path="/" element={<Navigate to="/login" replace />} />
-              </Routes>
+                  <Route path="/" element={<Navigate to="/login" replace />} />
+                </Routes>
+              </Suspense>
+              <GlobalLoadingNotice />
               <Toaster position="top-right" />
             </BrowserRouter>
           </StudentAuthProvider>

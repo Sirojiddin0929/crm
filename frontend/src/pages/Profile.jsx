@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { User, Phone, Mail, Lock, Camera, Save } from 'lucide-react';
-import { PageHeader, Field, Input, Avatar } from '../components/UI';
+import { PageHeader, Field, Input, Avatar, resolvePhotoUrl } from '../components/UI';
 import { useAuth } from '../context/AuthContext';
 import { useTeacherAuth } from '../context/TeacherAuthContext';
 import { useStudentAuth } from '../context/StudentAuthContext';
@@ -60,7 +60,12 @@ export default function Profile() {
       const res = await api.update(user.id, data);
       
       // Update local storage/context
-      const newUser = { ...user, ...res.data };
+      const updatedEntity =
+        res.data?.user ||
+        res.data?.teacher ||
+        res.data?.student ||
+        null;
+      const newUser = updatedEntity ? { ...user, ...updatedEntity } : { ...user, ...data };
       if (adminAuth.user) adminAuth.updateUser(newUser);
       else if (teacherAuth.user) teacherAuth.updateUser(newUser);
       else if (studentAuth.user) studentAuth.updateUser(newUser);
@@ -89,7 +94,7 @@ export default function Profile() {
                  <div className="flex flex-col items-center">
                     <div className="w-32 h-40 border border-gray-200 dark:border-white/10 flex items-center justify-center p-2 mb-2 relative overflow-hidden group">
                       {user?.photo ? (
-                         <img src={user.photo} alt="avatar" className="w-full h-full object-cover" />
+                         <img src={resolvePhotoUrl(user.photo)} alt="avatar" className="w-full h-full object-cover" />
                       ) : (
                          <Avatar name={user?.fullName || "Namuna"} size="xl" className="w-full h-full rounded-none" />
                       )}

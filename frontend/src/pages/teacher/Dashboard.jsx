@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { BookOpen, Users, ClipboardList, Star, TrendingUp, Calendar } from 'lucide-react';
-import { StatCard, PageHeader, Avatar } from '../../components/UI';
+import { MiniAreaChart, StatCard, PageHeader, Avatar } from '../../components/UI';
 import { useTeacherAuth } from '../../context/TeacherAuthContext';
-import { groupsAPI, lessonsAPI, homeworkAPI, ratingsAPI } from '../../services/api';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { groupsAPI, lessonsAPI, homeworkAPI } from '../../services/api';
 import dayjs from 'dayjs';
 
 const chartData = [
@@ -17,7 +16,6 @@ export default function TeacherDashboard() {
   const [groups, setGroups] = useState([]);
   const [lessons, setLessons] = useState([]);
   const [homework, setHomework] = useState([]);
-  const [rating, setRating] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,14 +23,11 @@ export default function TeacherDashboard() {
     Promise.all([
       groupsAPI.getAll({ teacherId: user.id }),
       lessonsAPI.getAll({ teacherId: user.id }),
-      homeworkAPI.getAll({}),
-      ratingsAPI.getByTeacher(user.id),
-    ]).then(([g, l, h, r]) => {
+      homeworkAPI.getAll({ teacherId: user.id }),
+    ]).then(([g, l, h]) => {
       setGroups(g.data || []);
       setLessons(l.data || []);
       setHomework(h.data || []);
-      const rd = r.data;
-      setRating(rd?.avgRating || (Array.isArray(rd) ? (rd.reduce((s, x) => s + x.score, 0) / (rd.length || 1)).toFixed(1) : null));
     }).catch(() => {}).finally(() => setLoading(false));
   }, [user]);
 
@@ -51,7 +46,7 @@ export default function TeacherDashboard() {
         <StatCard icon={<Users size={20}/>} label="Guruhlarim" value={groups.length} color="#7C3AED"/>
         <StatCard icon={<BookOpen size={20}/>} label="Jami darslar" value={lessons.length} color="#2563EB"/>
         <StatCard icon={<ClipboardList size={20}/>} label="Vazifalar" value={homework.length} color="#D97706"/>
-        <StatCard icon={<Star size={20}/>} label="Reytingim" value={rating ? `${rating} ⭐` : '—'} color="#059669" sub="o'rtacha ball"/>
+        <StatCard icon={<Star size={20}/>} label="Reytinglar" value="Admin panelda" color="#059669" sub="student baholari admin ko'radi"/>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
@@ -66,21 +61,13 @@ export default function TeacherDashboard() {
               <TrendingUp size={18}/>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={180}>
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#7C3AED" stopOpacity={0.15}/>
-                  <stop offset="95%" stopColor="#7C3AED" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false}/>
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9ca3af', fontWeight: 600 }}/>
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9ca3af', fontWeight: 600 }}/>
-              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: 12, fontWeight: 700 }}/>
-              <Area type="monotone" dataKey="davomat" stroke="#7C3AED" strokeWidth={3} fill="url(#grad)" name="Talabalar"/>
-            </AreaChart>
-          </ResponsiveContainer>
+          <MiniAreaChart
+            data={chartData}
+            lines={[
+              { dataKey: 'davomat', color: '#7C3AED', fill: 'rgba(124,58,237,0.12)', name: 'Talabalar' },
+            ]}
+            height={200}
+          />
         </div>
 
         {/* Today lessons */}

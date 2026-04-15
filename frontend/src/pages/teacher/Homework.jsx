@@ -17,12 +17,16 @@ export default function TeacherHomework() {
   const [deleteId, setDeleteId] = useState(null);
   const [expanded, setExpanded] = useState(null);
   const [responses, setResponses] = useState({});
+  const [results, setResults] = useState({});
   const [scores, setScores] = useState({});
   const [uploadDrawer, setUploadDrawer] = useState(null);
 
   const load = async () => {
     try {
-      const [h, l] = await Promise.all([homeworkAPI.getAll({}), lessonsAPI.getAll({ teacherId: user?.id })]);
+      const [h, l] = await Promise.all([
+        homeworkAPI.getAll({ teacherId: user?.id }),
+        lessonsAPI.getAll({ teacherId: user?.id }),
+      ]);
       setHomework(h.data || []);
       setLessons(l.data || []);
     } catch { toast.error('Xatolik'); }
@@ -44,11 +48,18 @@ export default function TeacherHomework() {
   const toggleHW = async hw => {
     if (expanded === hw.id) { setExpanded(null); return; }
     setExpanded(hw.id);
-    if (!responses[hw.id]) {
+    if (!responses[hw.id] || !results[hw.id]) {
       try {
-        const r = await homeworkResponsesAPI.getAll({ homeworkId: hw.id });
+        const [r, res] = await Promise.all([
+          homeworkResponsesAPI.getAll({ homeworkId: hw.id }),
+          homeworkResultsAPI.getAll({ homeworkId: hw.id }),
+        ]);
         setResponses(prev => ({ ...prev, [hw.id]: r.data || [] }));
-      } catch { setResponses(prev => ({ ...prev, [hw.id]: [] })); }
+        setResults(prev => ({ ...prev, [hw.id]: res.data || [] }));
+      } catch {
+        setResponses(prev => ({ ...prev, [hw.id]: [] }));
+        setResults(prev => ({ ...prev, [hw.id]: [] }));
+      }
     }
   };
 
@@ -59,8 +70,12 @@ export default function TeacherHomework() {
       await homeworkResultsAPI.create({ homeworkId: hwId, studentId: resp.studentId, score: Number(sc.score), title: sc.comment || '', teacherId: user?.id, userId: 1 });
       await homeworkResponsesAPI.update(resp.id, { status: 'CHECKED' });
       toast.success('Baho berildi!');
-      const r = await homeworkResponsesAPI.getAll({ homeworkId: hwId });
+      const [r, res] = await Promise.all([
+        homeworkResponsesAPI.getAll({ homeworkId: hwId }),
+        homeworkResultsAPI.getAll({ homeworkId: hwId }),
+      ]);
       setResponses(prev => ({ ...prev, [hwId]: r.data || [] }));
+      setResults(prev => ({ ...prev, [hwId]: res.data || [] }));
     } catch (e) { toast.error(e.response?.data?.message || 'Xatolik'); }
   };
 
@@ -91,6 +106,7 @@ export default function TeacherHomework() {
         {homework.length === 0 && <div className="card"><Empty text="Vazifalar topilmadi"/></div>}
         {homework.map((hw, idx) => {
           const resp = responses[hw.id] || [];
+          const hwResults = results[hw.id] || [];
           const isOpen = expanded === hw.id;
           const checked = resp.filter(r => r.status === 'CHECKED').length;
           const lesson = lessons.find(l => l.id === hw.lessonId);
@@ -129,20 +145,42 @@ export default function TeacherHomework() {
                     <div className="divide-y divide-gray-50">
                       {resp.map(r => (
                         <div key={r.id} className="px-4 py-3 hover:bg-gray-50/40">
+                          {(() => {
+                            const graded = hwResults.find(item => item.studentId === r.studentId);
+                            return (
+                              <>
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex items-center gap-2.5">
-                              <Avatar name={`Talaba ${r.studentId}`} size="sm"/>
+                              <Avatar name={r.student?.fullName || `Talaba ${r.studentId}`} size="sm"/>
                               <div>
-                                <p className="font-700 text-sm text-gray-800">Talaba #{r.studentId}</p>
+                                <p className="font-700 text-sm text-gray-800">{r.student?.fullName || `Talaba #${r.studentId}`}</p>
                                 {r.url && (
                                   <a href={r.url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">🔗 Havolani ko'rish</a>
                                 )}
+                                {r.file && (
+                                  <a href={`/api/uploads/${String(r.file).split('/').pop()}`} target="_blank" rel="noreferrer" className="block text-xs text-primary hover:underline mt-1">📎 Faylni ko'rish</a>
+                                )}
                                 {r.title && <p className="text-xs text-gray-500 mt-0.5">{r.title}</p>}
+                                {r.created_at && <p className="text-[11px] text-gray-400 mt-1">{new Date(r.created_at).toLocaleString()}</p>}
                               </div>
                             </div>
                             <StatusBadge status={r.status || 'PENDING'}/>
                           </div>
-                          {r.status !== 'CHECKED' && (
+                          {graded && (
+                            <div className="mt-3 ml-9 rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-800 text-emerald-700">Baho: {graded.score}</p>
+                                  <p className="text-xs text-gray-600 mt-1">{graded.comment || graded.title || 'Izoh qoldirilmagan'}</p>
+                                  <p className="text-[11px] text-gray-400 mt-2">
+                                    {graded.teacher?.fullName || user?.fullName || 'Teacher'} · {graded.createdAt || graded.created_at ? new Date(graded.createdAt || graded.created_at).toLocaleString() : '—'}
+                                  </p>
+                                </div>
+                                <StatusBadge status={graded.status} />
+                              </div>
+                            </div>
+                          )}
+                          {!graded && (
                             <div className="flex items-center gap-2 mt-2.5 pl-9">
                               <input
                                 type="number" min="0" max="100" placeholder="Ball (0-100)"
@@ -161,6 +199,9 @@ export default function TeacherHomework() {
                               </button>
                             </div>
                           )}
+                              </>
+                            );
+                          })()}
                         </div>
                       ))}
                     </div>

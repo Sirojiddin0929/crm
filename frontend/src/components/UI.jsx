@@ -150,6 +150,18 @@ export function RoleBadge({ role }) {
   return <span className={map[role] || 'badge badge-gray'}>{role}</span>;
 }
 
+export function resolvePhotoUrl(photo) {
+  if (!photo) return '';
+  const raw = String(photo).trim();
+  if (!raw) return '';
+  if (raw.startsWith('http') || raw.startsWith('data:')) return raw;
+  if (raw.startsWith('/api/uploads/') || raw.startsWith('/uploads/')) {
+    return `http://localhost:4000${raw.startsWith('/api') ? raw.replace('/api', '') : raw}`;
+  }
+  if (raw.startsWith('/')) return `http://localhost:4000${raw}`;
+  return `http://localhost:4000/uploads/${raw.split('/').pop()}`;
+}
+
 // ── AVATAR ───────────────────────────────────────────
 export function Avatar({ name, photo, size = 'md', className = '' }) {
   const sz = { 
@@ -160,17 +172,12 @@ export function Avatar({ name, photo, size = 'md', className = '' }) {
     xl: 'w-24 h-24 text-2xl'
   }[size] || size;
   
-  // Use a default user avatar if no photo is provided
-  // A generic user icon from flaticon or similar
-  const defaultPhoto = `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=0D8ABC&color=fff&rounded=true&font-size=0.4`;
-  // Actually, the user asked NOT to see letters. So we use a generic silhouette.
-  const silhouette = `https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png`;
+  const silhouetteSvg = encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128' viewBox='0 0 128 128'><rect width='128' height='128' fill='#E5E7EB'/><circle cx='64' cy='46' r='24' fill='#9CA3AF'/><path d='M18 112c6-22 22-34 46-34s40 12 46 34' fill='#9CA3AF'/></svg>",
+  );
+  const silhouette = `data:image/svg+xml;utf8,${silhouetteSvg}`;
 
-  // Handle relative image paths from the backend
-  let photoUrl = photo;
-  if (photoUrl && !photoUrl.startsWith('http') && !photoUrl.startsWith('data:') && !photoUrl.startsWith('/')) {
-    photoUrl = `http://localhost:4000/uploads/${photoUrl}`;
-  }
+  const photoUrl = resolvePhotoUrl(photo);
 
   const imgSrc = photoUrl || silhouette;
 
@@ -244,6 +251,76 @@ export function StatCard({ icon, label, value, color = '#7C3AED', sub }) {
       <p className="text-[10px] font-800 text-gray-400 dark:text-gray-500 uppercase tracking-widest">{label}</p>
       <p className="text-2xl font-900 text-gray-800 dark:text-white">{value ?? 0}</p>
       {sub && <p className="text-[11px] text-gray-400 dark:text-gray-500 font-600">{sub}</p>}
+    </div>
+  );
+}
+
+export function MiniAreaChart({ data = [], lines = [], height = 220 }) {
+  const width = 640;
+  const padding = 24;
+  const innerWidth = width - padding * 2;
+  const innerHeight = height - padding * 2;
+  const values = data.flatMap(item => lines.map(line => Number(item[line.dataKey] || 0)));
+  const maxValue = Math.max(...values, 1);
+
+  const getX = index => (
+    data.length <= 1
+      ? padding + innerWidth / 2
+      : padding + (index / (data.length - 1)) * innerWidth
+  );
+  const getY = value => padding + innerHeight - (Number(value || 0) / maxValue) * innerHeight;
+
+  const buildLinePath = dataKey => data.map((item, index) => `${index === 0 ? 'M' : 'L'} ${getX(index)} ${getY(item[dataKey])}`).join(' ');
+  const buildAreaPath = dataKey => {
+    if (!data.length) return '';
+    const linePath = buildLinePath(dataKey);
+    return `${linePath} L ${getX(data.length - 1)} ${padding + innerHeight} L ${getX(0)} ${padding + innerHeight} Z`;
+  };
+
+  return (
+    <div className="w-full">
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-[220px] w-full overflow-visible">
+        {[0, 1, 2, 3].map(step => {
+          const y = padding + (innerHeight / 3) * step;
+          return (
+            <line
+              key={step}
+              x1={padding}
+              y1={y}
+              x2={width - padding}
+              y2={y}
+              stroke="#e5e7eb"
+              strokeDasharray="4 6"
+            />
+          );
+        })}
+
+        {lines.map(line => (
+          <g key={line.dataKey}>
+            <path d={buildAreaPath(line.dataKey)} fill={line.fill || `${line.color}22`} />
+            <path d={buildLinePath(line.dataKey)} fill="none" stroke={line.color} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+          </g>
+        ))}
+
+        {data.map((item, index) => (
+          <g key={item.name || index}>
+            <text x={getX(index)} y={height - 6} textAnchor="middle" className="fill-gray-400 text-[11px] font-[700]">
+              {item.name}
+            </text>
+          </g>
+        ))}
+      </svg>
+
+      {lines.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-4 px-1">
+          {lines.map(line => (
+            <div key={line.dataKey} className="flex items-center gap-2 text-xs font-700 text-gray-500">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: line.color }} />
+              <span>{line.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

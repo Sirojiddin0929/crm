@@ -193,12 +193,20 @@ export function TeacherVideos() {
     setUploading(true); setProgress(10);
     try {
       const fd = new FormData();
-      fd.append('file', file); fd.append('lessonId', lessonId); fd.append('title', title); fd.append('teacherId', user?.id);
+      fd.append('file', file);
+      fd.append('lessonId', String(Number(lessonId)));
+      fd.append('title', String(title || file?.name || 'Video'));
+      if (user?.id) fd.append('teacherId', String(user.id));
       const timer = setInterval(() => setProgress(p => Math.min(p + 8, 85)), 400);
       await lessonVideosAPI.create(fd);
       clearInterval(timer); setProgress(100);
       setTimeout(() => { toast.success('Video yuklandi!'); setUploadOpen(false); setFile(null); setLessonId(''); setTitle(''); setProgress(0); setUploading(false); load(); }, 600);
-    } catch (e) { toast.error(e.response?.data?.message || 'Xatolik'); setUploading(false); setProgress(0); }
+    } catch (e) {
+      const msg = e.response?.data?.message || e.response?.data?.error || 'Xatolik';
+      toast.error(Array.isArray(msg) ? msg.join(', ') : msg);
+      setUploading(false);
+      setProgress(0);
+    }
   };
 
   return (

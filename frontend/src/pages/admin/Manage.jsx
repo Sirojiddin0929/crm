@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Plus, Trash2, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { coursesAPI, roomsAPI, usersAPI } from '../../services/api';
-import { PageHeader, Drawer, Field, Input, Select, Dialog, Empty } from '../../components/UI';
+import { PageHeader, Drawer, Field, Input, Select, Dialog, Empty, resolvePhotoUrl } from '../../components/UI';
 import dayjs from 'dayjs';
 
 // ── Sana formatlash ───────────────────────────────────────
@@ -128,7 +128,7 @@ function Kurslar() {
             placeholder="Kurs haqida..." rows={3}
             className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-primary resize-none font-500"/>
         </Field>
-        <Field label="Rangi">
+        {/* <Field label="Rangi">
           <div className="flex gap-2 flex-wrap">
             {COLORS.map(c => (
               <button key={c} onClick={() => setForm({...form, color: c})}
@@ -136,7 +136,7 @@ function Kurslar() {
                 style={{ background: c }}/>
             ))}
           </div>
-        </Field>
+        </Field> */}
         <div className="flex gap-3 pt-2">
           <button onClick={() => setDrawerOpen(false)} className="btn-secondary flex-1 justify-center">Bekor qilish</button>
           <button onClick={handleSave} className="btn-primary flex-1 justify-center">Saqlash</button>
@@ -233,7 +233,11 @@ function Xodimlar() {
   });
 
   const load = async () => {
-    try { setUsers((await usersAPI.getAll()).data || []); } catch {}
+    try {
+      const res = await usersAPI.getSearchSummary({ page: 1, limit: 500 });
+      const payload = res.data || {};
+      setUsers(payload.data || []);
+    } catch {}
   };
   useEffect(() => { load(); }, []);
 
@@ -325,7 +329,7 @@ function Xodimlar() {
                   <td className="table-cell">
                     <div className="flex items-center gap-2">
                       {u.photo
-                        ? <img src={u.photo} alt={u.fullName} className="w-7 h-7 rounded-full object-cover flex-shrink-0"/>
+                        ? <img src={resolvePhotoUrl(u.photo)} alt={u.fullName} className="w-7 h-7 rounded-full object-cover flex-shrink-0"/>
                         : <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white text-xs font-700 flex-shrink-0">{u.fullName?.[0]}</div>
                       }
                       <div>
@@ -389,7 +393,7 @@ function Xodimlar() {
             className="border-2 border-dashed border-gray-200 rounded-xl p-5 text-center hover:border-primary/50 transition-colors cursor-pointer">
             {photoPreview ? (
               <div className="flex flex-col items-center gap-2">
-                <img src={photoPreview} alt="preview" className="w-16 h-16 rounded-full object-cover"/>
+                <img src={resolvePhotoUrl(photoPreview)} alt="preview" className="w-16 h-16 rounded-full object-cover"/>
                 <p className="text-xs text-primary font-700">Rasm tanlandi ✓</p>
                 <p className="text-xs text-gray-400">O'zgartirish uchun bosing</p>
               </div>
