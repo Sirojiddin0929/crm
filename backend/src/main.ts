@@ -19,7 +19,10 @@ async function bootstrap() {
 
   app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-  app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
+  const uploadsPath = join(process.cwd(), 'uploads');
+  app.useStaticAssets(uploadsPath, { prefix: '/uploads' });
+  // Keep backward compatibility for clients requesting /api/uploads/*
+  app.useStaticAssets(uploadsPath, { prefix: '/api/uploads' });
   app.setGlobalPrefix('api')
 
   const config = new DocumentBuilder()

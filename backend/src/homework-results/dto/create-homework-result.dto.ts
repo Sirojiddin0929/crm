@@ -37,14 +37,14 @@ export class CreateHomeworkResultDto {
   @Type(() => Number)
   teacherId?: number;
 
-  @ApiProperty({ example: 5, description: "XP ball" })
+  @ApiPropertyOptional({ example: 5, description: "XP avtomatik hisoblanadi (0-59:0, 60-69:2, 70-89:4, 90-100:6). Yuborilgan qiymat e'tiborga olinmaydi." })
   @IsOptional()
   @IsInt()
   @Min(0)
   @Type(() => Number)
   xp?: number;
 
-  @ApiProperty({ example: 10, description: "Kumush (Coins)" })
+  @ApiPropertyOptional({ example: 50, description: "Kumush (Coins) avtomatik: coin = xp * 10. Yuborilgan qiymat e'tiborga olinmaydi." })
   @IsOptional()
   @IsInt()
   @Min(0)

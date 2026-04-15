@@ -38,8 +38,23 @@ export class LessonsController {
   @ApiOperation({ summary: "Barcha darslarni ko'rish (groupId/teacherId bo'yicha filter qilish mumkin)" })
   @ApiQuery({ name: 'groupId', required: false, type: Number })
   @ApiQuery({ name: 'teacherId', required: false, type: Number })
-  findAll(@Query('groupId') groupId?: string, @Query('teacherId') teacherId?: string) {
-    return this.lessonsService.findAll(groupId ? +groupId : undefined, teacherId ? +teacherId : undefined);
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  findAll(
+    @Query('groupId') groupId?: string,
+    @Query('teacherId') teacherId?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.lessonsService.findAll({
+      groupId: groupId ? +groupId : undefined,
+      teacherId: teacherId ? +teacherId : undefined,
+      search,
+      page: page ? +page : undefined,
+      limit: limit ? +limit : undefined,
+    });
   }
 
   @Get(':id')

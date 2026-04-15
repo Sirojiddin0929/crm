@@ -8,10 +8,11 @@ export class CreateHomeworkResponseDto {
   @Type(() => Number)
   homeworkId: number;
 
-  @ApiProperty({ example: 1, description: "O'quvchi ID" })
+  @ApiPropertyOptional({ example: 1, description: "O'quvchi ID (student bo'lsa tokendan olinadi)" })
+  @IsOptional()
   @IsInt()
   @Type(() => Number)
-  studentId: number;
+  studentId?: number;
 
   @ApiPropertyOptional({ example: "Mening yechimim" })
   @IsOptional()

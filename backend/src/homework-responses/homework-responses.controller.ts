@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -22,6 +23,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { HomeworkResponsesService } from './homework-responses.service';
 import { CreateHomeworkResponseDto } from './dto/create-homework-response.dto';
 import { UpdateHomeworkResponseDto } from './dto/update-homework-response.dto';
+import type { Request } from 'express';
 
 @ApiTags('Homework Responses')
 @Controller('homework-responses')
@@ -33,7 +35,11 @@ export class HomeworkResponsesController {
   @Post()
   @Roles(Role.STUDENT, Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR, Role.TEACHER)
   @ApiOperation({ summary: "Vazifaga javob qo'shish (o'quvchi tomonidan)" })
-  create(@Body() dto: CreateHomeworkResponseDto) {
+  create(@Body() dto: CreateHomeworkResponseDto, @Req() req: Request) {
+    const authUser = (req as any).user as { sub?: number; role?: string; type?: string } | undefined;
+    if (authUser?.role === 'STUDENT' || authUser?.type === 'student') {
+      dto.studentId = authUser.sub;
+    }
     return this.homeworkResponsesService.create(dto);
   }
 
@@ -55,8 +61,20 @@ export class HomeworkResponsesController {
   @ApiOperation({ summary: "Barcha javoblarni ko'rish (homeworkId/studentId bo'yicha filter qilish mumkin)" })
   @ApiQuery({ name: 'homeworkId', required: false, type: Number })
   @ApiQuery({ name: 'studentId', required: false, type: Number })
-  findAll(@Query('homeworkId') homeworkId?: string, @Query('studentId') studentId?: string) {
-    return this.homeworkResponsesService.findAll(homeworkId ? +homeworkId : undefined, studentId ? +studentId : undefined);
+  @ApiQuery({ name: 'groupId', required: false, type: Number })
+  @ApiQuery({ name: 'compact', required: false, type: Boolean })
+  findAll(
+    @Query('homeworkId') homeworkId?: string,
+    @Query('studentId') studentId?: string,
+    @Query('groupId') groupId?: string,
+    @Query('compact') compact?: string,
+  ) {
+    return this.homeworkResponsesService.findAll(
+      homeworkId ? +homeworkId : undefined,
+      studentId ? +studentId : undefined,
+      groupId ? +groupId : undefined,
+      compact === 'true' || compact === '1',
+    );
   }
 
   @Get(':id')

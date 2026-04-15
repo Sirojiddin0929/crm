@@ -16,23 +16,51 @@ const SELECT_RESPONSE = {
   homework: { select: { id: true, title: true, lesson: { select: { id: true, title: true } } } },
   student: { select: { id: true, fullName: true, email: true } },
 };
+const SELECT_RESPONSE_COMPACT = {
+  id: true,
+  title: true,
+  file: true,
+  url: true,
+  status: true,
+  homeworkId: true,
+  studentId: true,
+  created_at: true,
+  updated_at: true,
+};
 
 @Injectable()
 export class HomeworkResponsesService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateHomeworkResponseDto) {
+    if (!dto.studentId) throw new BadRequestException("O'quvchi ID aniqlanmadi");
+
     const homework = await this.prisma.homework.findUnique({ where: { id: dto.homeworkId } });
     if (!homework) throw new NotFoundException('Vazifa topilmadi');
 
     const student = await this.prisma.student.findUnique({ where: { id: dto.studentId } });
     if (!student) throw new NotFoundException("O'quvchi topilmadi");
 
-    // Prevent duplicate submission
+    // If already submitted, treat this as resubmission and reopen as PENDING
     const existing = await this.prisma.homeworkResponse.findFirst({
       where: { homeworkId: dto.homeworkId, studentId: dto.studentId },
     });
-    if (existing) throw new BadRequestException("Siz bu vazifaga allaqachon javob yuborgansiz");
+    if (existing) {
+      const response = await this.prisma.homeworkResponse.update({
+        where: { id: existing.id },
+        data: {
+          title: dto.title ?? existing.title ?? null,
+          url: dto.url ?? existing.url ?? null,
+          status: 'PENDING',
+        },
+        select: SELECT_RESPONSE,
+      });
+
+      return {
+        message: "Vazifa javobi qayta yuborildi",
+        response,
+      };
+    }
 
     const response = await this.prisma.homeworkResponse.create({
       data: {
@@ -66,13 +94,14 @@ export class HomeworkResponsesService {
     };
   }
 
-  async findAll(homeworkId?: number, studentId?: number) {
+  async findAll(homeworkId?: number, studentId?: number, groupId?: number, compact?: boolean) {
     return this.prisma.homeworkResponse.findMany({
       where: {
         ...(homeworkId ? { homeworkId } : {}),
         ...(studentId ? { studentId } : {}),
+        ...(groupId ? { homework: { lesson: { groupId } } } : {}),
       },
-      select: SELECT_RESPONSE,
+      select: compact ? SELECT_RESPONSE_COMPACT : SELECT_RESPONSE,
       orderBy: { created_at: 'desc' },
     });
   }

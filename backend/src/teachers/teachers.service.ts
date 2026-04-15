@@ -1,12 +1,10 @@
 import {BadRequestException,Injectable,NotFoundException, UnauthorizedException,} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTeacherDto } from './dto/create-teacher.dto';
 import { UpdateTeacherDto } from './dto/update-teacher.dto';
 import { LoginDto } from 'src/auth/dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
-import { access } from 'fs';
 
 const SELECT_TEACHER = {
   id: true,
@@ -24,30 +22,33 @@ const SELECT_TEACHER = {
 export class TeachersService {
   constructor(
     private prisma: PrismaService,
-    private mail: MailService,
     private jwt:JwtService
   ) {}
 
-  private generatePassword(length = 12): string {
-    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const lower = 'abcdefghijklmnopqrstuvwxyz';
-    const digits = '0123456789';
-    const symbols = '!@#$%^&*()-_=+';
-    const all = upper + lower + digits + symbols;
+  private buildPagination(page?: number, limit?: number) {
+    const safePage = Number.isFinite(page) && page && page > 0 ? Math.floor(page) : 1;
+    const safeLimit = Number.isFinite(limit) && limit && limit > 0 ? Math.min(Math.floor(limit), 100) : 10;
+    return { page: safePage, limit: safeLimit, skip: (safePage - 1) * safeLimit };
+  }
 
-    const password =
-      upper[Math.floor(Math.random() * upper.length)] +
-      lower[Math.floor(Math.random() * lower.length)] +
-      digits[Math.floor(Math.random() * digits.length)] +
-      symbols[Math.floor(Math.random() * symbols.length)] +
-      Array.from({ length: length - 4 }, () =>
-        all[Math.floor(Math.random() * all.length)],
-      ).join('');
+  private buildWhere(search?: string, status?: string) {
+    const q = search?.trim();
+    const normalizedStatus = status?.toUpperCase();
+    const where: any = {};
 
-    return password
-      .split('')
-      .sort(() => Math.random() - 0.5)
-      .join('');
+    if (q) {
+      where.OR = [
+        { fullName: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+        { position: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    if (normalizedStatus && ['ACTIVE', 'INACTIVE', 'FREEZE'].includes(normalizedStatus)) {
+      where.status = normalizedStatus;
+    }
+
+    return where;
   }
 
   async create(dto: CreateTeacherDto) {
@@ -58,8 +59,7 @@ export class TeachersService {
       throw new BadRequestException('Bu email allaqachon ro\'yxatdan o\'tgan');
     }
 
-    const plainPassword = this.generatePassword();
-    const hashedPassword = await bcrypt.hash(plainPassword, 10);
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
 
     const teacher = await this.prisma.teacher.create({
       data: {
@@ -73,10 +73,8 @@ export class TeachersService {
       select: SELECT_TEACHER,
     });
 
-    await this.mail.sendCredentials(dto.email, dto.fullName, plainPassword);
-
     return {
-      message: `O'qituvchi qo'shildi. Login va parol ${dto.email} manziliga yuborildi.`,
+      message: `O'qituvchi qo'shildi.`,
       teacher,
     };
   }
@@ -109,6 +107,7 @@ export class TeachersService {
         id:teacher.id,
         fullName:teacher.fullName,
         email:teacher.email,
+        photo: teacher.photo,
         role:'TEACHER',
         status:teacher.status
       }
@@ -118,11 +117,107 @@ export class TeachersService {
 
   }
 
-  async findAll() {
-    return this.prisma.teacher.findMany({
-      select: SELECT_TEACHER,
-      orderBy: { created_at: 'desc' },
-    });
+  async findAll(params?: { page?: number; limit?: number; search?: string; status?: string }) {
+    const { page, limit, search, status } = params || {};
+    const usePagination = page !== undefined || limit !== undefined || !!search || !!status;
+    const where = this.buildWhere(search, status);
+
+    if (!usePagination) {
+      return this.prisma.teacher.findMany({
+        select: SELECT_TEACHER,
+        orderBy: { created_at: 'desc' },
+      });
+    }
+
+    const { page: safePage, limit: safeLimit, skip } = this.buildPagination(page, limit);
+    const [total, data] = await Promise.all([
+      this.prisma.teacher.count({ where }),
+      this.prisma.teacher.findMany({
+        where,
+        skip,
+        take: safeLimit,
+        select: SELECT_TEACHER,
+        orderBy: { created_at: 'desc' },
+      }),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / safeLimit));
+    return {
+      data,
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages,
+        hasNext: safePage < totalPages,
+        hasPrev: safePage > 1,
+      },
+    };
+  }
+
+  async getSummary() {
+    const [total, active, inactive, freeze, expAgg, totalGroups] = await Promise.all([
+      this.prisma.teacher.count(),
+      this.prisma.teacher.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.teacher.count({ where: { status: 'INACTIVE' } }),
+      this.prisma.teacher.count({ where: { status: 'FREEZE' } }),
+      this.prisma.teacher.aggregate({
+        _avg: { experience: true },
+      }),
+      this.prisma.group.count(),
+    ]);
+
+    return {
+      total,
+      totalGroups,
+      avgExperience: Number(expAgg._avg.experience || 0),
+      byStatus: {
+        ACTIVE: active,
+        INACTIVE: inactive,
+        FREEZE: freeze,
+      },
+    };
+  }
+
+  async getSearchSummary(params?: { search?: string; status?: string; page?: number; limit?: number }) {
+    const where = this.buildWhere(params?.search, params?.status);
+    const { page, limit, skip } = this.buildPagination(params?.page, params?.limit);
+
+    const [total, active, inactive, freeze, items] = await Promise.all([
+      this.prisma.teacher.count({ where }),
+      this.prisma.teacher.count({ where: { ...where, status: 'ACTIVE' } }),
+      this.prisma.teacher.count({ where: { ...where, status: 'INACTIVE' } }),
+      this.prisma.teacher.count({ where: { ...where, status: 'FREEZE' } }),
+      this.prisma.teacher.findMany({
+        where,
+        skip,
+        take: limit,
+        select: SELECT_TEACHER,
+        orderBy: { created_at: 'desc' },
+      }),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    return {
+      summary: {
+        query: params?.search?.trim() || '',
+        total,
+        byStatus: {
+          ACTIVE: active,
+          INACTIVE: inactive,
+          FREEZE: freeze,
+        },
+      },
+      data: items,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    };
   }
 
   async findOne(id: number) {

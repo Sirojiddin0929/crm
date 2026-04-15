@@ -4,6 +4,9 @@ import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { BulkCreateAttendanceDto } from './dto/bulk-create-attendance.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 
+const ATTENDANCE_PRESENT_XP = 4;
+const ATTENDANCE_PRESENT_COIN = 40;
+
 const SELECT_ATTENDANCE = {
   id: true,
   lessonId: true,
@@ -31,6 +34,20 @@ function keepLatestAttendance(records: Array<{ studentId: number }>) {
 export class AttendanceService {
   constructor(private prisma: PrismaService) {}
 
+  private async withTxRetry<T>(runner: (tx: any) => Promise<T>, attempts = 3): Promise<T> {
+    let lastError: any;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        return await this.prisma.$transaction(runner);
+      } catch (error: any) {
+        lastError = error;
+        if (error?.code !== 'P2028' || i === attempts - 1) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 200 * (i + 1)));
+      }
+    }
+    throw lastError;
+  }
+
   async create(dto: CreateAttendanceDto) {
     const lesson = await this.prisma.lesson.findUnique({ where: { id: dto.lessonId } });
     if (!lesson) throw new NotFoundException('Dars topilmadi');
@@ -44,16 +61,37 @@ export class AttendanceService {
     });
     if (existing) throw new BadRequestException("Bu dars uchun davomat allaqachon saqlangan");
 
-    const attendance = await this.prisma.attendance.create({
-      data: {
-        ...dto,
-        teacherId: dto.teacherId ?? lesson.teacherId ?? null,
-        userId:    dto.userId    ?? lesson.userId    ?? 1,
-      },
-      select: SELECT_ATTENDANCE,
+    const attendance = await this.withTxRetry(async (tx) => {
+      const created = await tx.attendance.create({
+        data: {
+          ...dto,
+          teacherId: dto.teacherId ?? lesson.teacherId ?? null,
+          userId: dto.userId ?? lesson.userId ?? 1,
+        },
+        select: SELECT_ATTENDANCE,
+      });
+
+      if (dto.isPresent) {
+        await tx.student.update({
+          where: { id: dto.studentId },
+          data: {
+            xp: { increment: ATTENDANCE_PRESENT_XP },
+            coin: { increment: ATTENDANCE_PRESENT_COIN },
+          },
+        });
+      }
+
+      return created;
     });
 
-    return { message: "Davomat belgilandi", attendance };
+    return {
+      message: "Davomat belgilandi",
+      attendance: {
+        ...attendance,
+        awardedXp: dto.isPresent ? ATTENDANCE_PRESENT_XP : 0,
+        awardedCoin: dto.isPresent ? ATTENDANCE_PRESENT_COIN : 0,
+      },
+    };
   }
 
   async bulkCreate(dto: BulkCreateAttendanceDto) {
@@ -74,31 +112,55 @@ export class AttendanceService {
     });
     const lessonMap = Object.fromEntries(lessons.map(l => [l.id, l]));
 
-    // $transaction o'rniga createMany — bitta query, timeout yo'q
-    await this.prisma.attendance.createMany({
-      data: dto.records.map((r) => {
-        const lesson = lessonMap[r.lessonId];
-        return {
-          lessonId:  r.lessonId,
-          studentId: r.studentId,
-          isPresent: r.isPresent,
-          teacherId: r.teacherId ?? lesson?.teacherId ?? null,
-          userId:    r.userId    ?? lesson?.userId    ?? 1,
-        };
-      }),
-      skipDuplicates: true,
+    const created = await this.withTxRetry(async (tx) => {
+      await tx.attendance.createMany({
+        data: dto.records.map((r) => {
+          const lesson = lessonMap[r.lessonId];
+          return {
+            lessonId: r.lessonId,
+            studentId: r.studentId,
+            isPresent: r.isPresent,
+            teacherId: r.teacherId ?? lesson?.teacherId ?? null,
+            userId: r.userId ?? lesson?.userId ?? 1,
+          };
+        }),
+        skipDuplicates: true,
+      });
+
+      const presentByStudent = new Map<number, number>();
+      for (const record of dto.records) {
+        if (!record.isPresent) continue;
+        presentByStudent.set(record.studentId, (presentByStudent.get(record.studentId) || 0) + 1);
+      }
+
+      for (const [studentId, count] of presentByStudent.entries()) {
+        await tx.student.update({
+          where: { id: studentId },
+          data: {
+            xp: { increment: count * ATTENDANCE_PRESENT_XP },
+            coin: { increment: count * ATTENDANCE_PRESENT_COIN },
+          },
+        });
+      }
+
+      return tx.attendance.findMany({
+        where: {
+          lessonId: { in: lessonIds },
+          studentId: { in: dto.records.map(r => r.studentId) },
+        },
+        select: SELECT_ATTENDANCE,
+        orderBy: { created_at: 'asc' },
+      });
     });
 
-    const created = await this.prisma.attendance.findMany({
-      where: {
-        lessonId:  { in: lessonIds },
-        studentId: { in: dto.records.map(r => r.studentId) },
-      },
-      select: SELECT_ATTENDANCE,
-      orderBy: { created_at: 'asc' },
-    });
-
-    return { message: `${created.length} ta davomat yozuvi qo'shildi`, attendance: created };
+    return {
+      message: `${created.length} ta davomat yozuvi qo'shildi`,
+      attendance: created.map((a) => ({
+        ...a,
+        awardedXp: a.isPresent ? ATTENDANCE_PRESENT_XP : 0,
+        awardedCoin: a.isPresent ? ATTENDANCE_PRESENT_COIN : 0,
+      })),
+    };
   }
 
   async findByLesson(lessonId: number) {
@@ -118,7 +180,7 @@ export class AttendanceService {
     const student = await this.prisma.student.findUnique({ where: { id: studentId } });
     if (!student) throw new NotFoundException("O'quvchi topilmadi");
 
-    return this.prisma.attendance.findMany({
+    const attendance = await this.prisma.attendance.findMany({
       where: { studentId },
       select: {
         ...SELECT_ATTENDANCE,
@@ -126,6 +188,12 @@ export class AttendanceService {
       },
       orderBy: { created_at: 'desc' },
     });
+
+    return attendance.map((a) => ({
+      ...a,
+      awardedXp: a.isPresent ? ATTENDANCE_PRESENT_XP : 0,
+      awardedCoin: a.isPresent ? ATTENDANCE_PRESENT_COIN : 0,
+    }));
   }
 
   async findAll() {

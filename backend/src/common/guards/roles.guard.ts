@@ -18,11 +18,26 @@ export class RolesGuard implements CanActivate {
     }
 
     const { user } = context.switchToHttp().getRequest();
+    const normalizedRole = this.normalizeRole(user);
 
-    if (!requiredRoles.includes(user?.role)) {
+    if (!normalizedRole || !requiredRoles.includes(normalizedRole)) {
       throw new ForbiddenException('Forbidden Condition');
     }
 
     return true;
+  }
+
+  private normalizeRole(user: any): Role | null {
+    const rawRole = user?.role ? String(user.role).toUpperCase() : null;
+    if (rawRole && (Object.values(Role) as string[]).includes(rawRole)) {
+      return rawRole as Role;
+    }
+
+    const rawType = user?.type ? String(user.type).toLowerCase() : '';
+    if (rawType === 'teacher') return Role.TEACHER;
+    if (rawType === 'student') return Role.STUDENT;
+    if (rawType === 'user') return null;
+
+    return null;
   }
 }

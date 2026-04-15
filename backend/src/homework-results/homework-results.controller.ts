@@ -55,8 +55,20 @@ export class HomeworkResultsController {
   @ApiOperation({ summary: "Barcha baholashlarni ko'rish (homeworkId/studentId bo'yicha filter qilish mumkin)" })
   @ApiQuery({ name: 'homeworkId', required: false, type: Number })
   @ApiQuery({ name: 'studentId', required: false, type: Number })
-  findAll(@Query('homeworkId') homeworkId?: string, @Query('studentId') studentId?: string) {
-    return this.homeworkResultsService.findAll(homeworkId ? +homeworkId : undefined, studentId ? +studentId : undefined);
+  @ApiQuery({ name: 'groupId', required: false, type: Number })
+  @ApiQuery({ name: 'compact', required: false, type: Boolean })
+  findAll(
+    @Query('homeworkId') homeworkId?: string,
+    @Query('studentId') studentId?: string,
+    @Query('groupId') groupId?: string,
+    @Query('compact') compact?: string,
+  ) {
+    return this.homeworkResultsService.findAll(
+      homeworkId ? +homeworkId : undefined,
+      studentId ? +studentId : undefined,
+      groupId ? +groupId : undefined,
+      compact === 'true' || compact === '1',
+    );
   }
 
   @Get(':id')

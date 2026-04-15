@@ -17,11 +17,54 @@ const SELECT_RESULT = {
   userId: true,
   created_at: true,
   updated_at: true,
-  homework: { select: { id: true, title: true, lesson: { select: { id: true, title: true } } } },
+  homework: {
+    select: {
+      id: true,
+      title: true,
+      created_at: true,
+      lesson: {
+        select: {
+          id: true,
+          title: true,
+          group: { select: { id: true, name: true } },
+        },
+      },
+    },
+  },
   student: { select: { id: true, fullName: true, email: true, xp: true, coin: true } },
   teacher: { select: { id: true, fullName: true } },
   user: { select: { id: true, fullName: true } },
 };
+const SELECT_RESULT_COMPACT = {
+  id: true,
+  title: true,
+  file: true,
+  score: true,
+  xp: true,
+  coin: true,
+  status: true,
+  homeworkId: true,
+  studentId: true,
+  teacherId: true,
+  userId: true,
+  created_at: true,
+  updated_at: true,
+};
+
+function serializeResult(result: any) {
+  if (!result) return result;
+  return {
+    ...result,
+    comment: result.title ?? '',
+  };
+}
+
+function calculateXpByScore(score: number) {
+  if (score >= 90) return 6;
+  if (score >= 70) return 4;
+  if (score >= 60) return 2;
+  return 0;
+}
 
 @Injectable()
 export class HomeworkResultsService {
@@ -38,21 +81,42 @@ export class HomeworkResultsService {
     const resultStatus = dto.score >= 60 ? 'APPROVED' : 'REJECTED';
     // Update HomeworkResponse status accordingly
     const responseStatus = dto.score >= 60 ? 'CHECKED' : 'RETURNED';
+    const nextXp = calculateXpByScore(dto.score);
+    const nextCoin = nextXp * 10;
 
-    const result = await this.prisma.homeworkResult.create({
-      data: {
-        homeworkId: dto.homeworkId,
-        studentId: dto.studentId,
-        score: dto.score,
-        xp: dto.xp || 0,
-        coin: dto.coin || 0,
-        title: dto.title ?? '',
-        status: resultStatus,
-        ...(dto.userId ? { userId: dto.userId } : {}),
-        ...(dto.teacherId ? { teacherId: dto.teacherId } : {}),
-      },
-      select: SELECT_RESULT,
+    const existing = await this.prisma.homeworkResult.findFirst({
+      where: { homeworkId: dto.homeworkId, studentId: dto.studentId },
+      select: { id: true, xp: true, coin: true },
     });
+
+    const result = existing
+      ? await this.prisma.homeworkResult.update({
+          where: { id: existing.id },
+          data: {
+            score: dto.score,
+            xp: nextXp,
+            coin: nextCoin,
+            title: dto.title ?? '',
+            status: resultStatus,
+            ...(dto.userId ? { userId: dto.userId } : { userId: null }),
+            ...(dto.teacherId ? { teacherId: dto.teacherId } : { teacherId: null }),
+          },
+          select: SELECT_RESULT,
+        })
+      : await this.prisma.homeworkResult.create({
+          data: {
+            homeworkId: dto.homeworkId,
+            studentId: dto.studentId,
+            score: dto.score,
+            xp: nextXp,
+            coin: nextCoin,
+            title: dto.title ?? '',
+            status: resultStatus,
+            ...(dto.userId ? { userId: dto.userId } : {}),
+            ...(dto.teacherId ? { teacherId: dto.teacherId } : {}),
+          },
+          select: SELECT_RESULT,
+        });
 
     // Update the corresponding HomeworkResponse status
     await this.prisma.homeworkResponse.updateMany({
@@ -60,18 +124,20 @@ export class HomeworkResultsService {
       data: { status: responseStatus },
     });
 
-    // Increment student XP and Coins
-    if (dto.xp || dto.coin) {
+    // Keep student balances in sync (1 XP = 10 coins)
+    const deltaXp = existing ? nextXp - (existing.xp || 0) : nextXp;
+    const deltaCoin = existing ? nextCoin - (existing.coin || 0) : nextCoin;
+    if (deltaXp !== 0 || deltaCoin !== 0) {
       await this.prisma.student.update({
         where: { id: dto.studentId },
         data: {
-          xp: { increment: dto.xp || 0 },
-          coin: { increment: dto.coin || 0 },
+          xp: { increment: deltaXp },
+          coin: { increment: deltaCoin },
         },
       });
     }
 
-    return { message: "Baholash qo'shildi", result };
+    return { message: existing ? "Baholash yangilandi" : "Baholash qo'shildi", result: serializeResult(result) };
   }
 
   async uploadFile(id: number, filename: string) {
@@ -92,15 +158,17 @@ export class HomeworkResultsService {
     };
   }
 
-  async findAll(homeworkId?: number, studentId?: number) {
-    return this.prisma.homeworkResult.findMany({
+  async findAll(homeworkId?: number, studentId?: number, groupId?: number, compact?: boolean) {
+    const results = await this.prisma.homeworkResult.findMany({
       where: {
         ...(homeworkId ? { homeworkId } : {}),
         ...(studentId ? { studentId } : {}),
+        ...(groupId ? { homework: { lesson: { groupId } } } : {}),
       },
-      select: SELECT_RESULT,
+      select: compact ? SELECT_RESULT_COMPACT : SELECT_RESULT,
       orderBy: { created_at: 'desc' },
     });
+    return results.map(serializeResult);
   }
 
   async findOne(id: number) {
@@ -109,7 +177,7 @@ export class HomeworkResultsService {
       select: SELECT_RESULT,
     });
     if (!result) throw new NotFoundException(`ID: ${id} bo'yicha natija topilmadi`);
-    return result;
+    return serializeResult(result);
   }
 
   async update(id: number, dto: UpdateHomeworkResultDto) {
@@ -117,11 +185,16 @@ export class HomeworkResultsService {
     const newScore = dto.score !== undefined ? dto.score : existing.score;
     const resultStatus = newScore >= 60 ? 'APPROVED' : 'REJECTED';
     const responseStatus = newScore >= 60 ? 'CHECKED' : 'RETURNED';
+    const nextXp = calculateXpByScore(newScore);
+    const nextCoin = nextXp * 10;
+    const { xp: _ignoredXp, coin: _ignoredCoin, ...safeDto } = dto as any;
 
     const result = await this.prisma.homeworkResult.update({
       where: { id },
       data: {
-        ...dto,
+        ...safeDto,
+        xp: nextXp,
+        coin: nextCoin,
         status: resultStatus,
       },
       select: SELECT_RESULT,
@@ -133,7 +206,19 @@ export class HomeworkResultsService {
       data: { status: responseStatus },
     });
 
-    return { message: "Baholash yangilandi", result };
+    const deltaXp = nextXp - (existing.xp || 0);
+    const deltaCoin = nextCoin - (existing.coin || 0);
+    if (deltaXp !== 0 || deltaCoin !== 0) {
+      await this.prisma.student.update({
+        where: { id: existing.studentId },
+        data: {
+          xp: { increment: deltaXp },
+          coin: { increment: deltaCoin },
+        },
+      });
+    }
+
+    return { message: "Baholash yangilandi", result: serializeResult(result) };
   }
 
   async remove(id: number) {

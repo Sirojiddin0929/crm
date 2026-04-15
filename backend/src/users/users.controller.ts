@@ -1,6 +1,6 @@
-import {Body,Controller,Delete,Get,Param,ParseIntPipe,Patch,Post,UploadedFile,UseGuards,UseInterceptors,} from '@nestjs/common';
+import {Body,Controller,Delete,Get,Param,ParseIntPipe,Patch,Post,Query,UploadedFile,UseGuards,UseInterceptors,} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBody, ApiCookieAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiCookieAuth, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { multerConfig } from '../common/upload/multer.config';
 import { UsersService } from './users.service';
@@ -27,8 +27,56 @@ export class UsersController {
   @Get()
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
   @ApiOperation({ summary: 'Barcha userlarni ko\'rish' })
-  findAll() {
-    return this.usersService.findAll();
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({ name: 'role', required: false, type: String })
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('role') role?: string,
+  ) {
+    return this.usersService.findAll({
+      page: page ? +page : undefined,
+      limit: limit ? +limit : undefined,
+      search,
+      status,
+      role,
+    });
+  }
+
+  @Get('summary')
+  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
+  @ApiOperation({ summary: 'Userlar bo\'yicha umumiy aggregate summary' })
+  getSummary() {
+    return this.usersService.getSummary();
+  }
+
+  @Get('search-summary')
+  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
+  @ApiOperation({ summary: 'Qidiruv + summary + pagination bilan userlar ro\'yxati' })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({ name: 'role', required: false, type: String })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  getSearchSummary(
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('role') role?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.usersService.getSearchSummary({
+      search,
+      status,
+      role,
+      page: page ? +page : undefined,
+      limit: limit ? +limit : undefined,
+    });
   }
 
   @Get(':id')

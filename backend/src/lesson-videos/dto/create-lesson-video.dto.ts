@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString } from 'class-validator';
 
 export class CreateLessonVideoDto {
@@ -8,9 +8,14 @@ export class CreateLessonVideoDto {
   @Type(() => Number)
   lessonId: number;
 
-  @ApiProperty({ example: "HTML asoslari - 1-dars video" })
+  @ApiPropertyOptional({ example: "HTML asoslari - 1-dars video" })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === undefined || value === null) return undefined;
+    return String(value).trim();
+  })
   @IsString()
-  title: string;
+  title?: string;
 
   @ApiPropertyOptional({ example: 1, description: "Admin (User) ID" })
   @IsOptional()

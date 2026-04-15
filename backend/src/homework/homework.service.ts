@@ -13,7 +13,7 @@ const SELECT_HOMEWORK = {
   userId: true,
   created_at: true,
   updated_at: true,
-  lesson: { select: { id: true, title: true, group: { select: { id: true, name: true } } } },
+  lesson: { select: { id: true, title: true, date: true, groupId: true, group: { select: { id: true, name: true } } } },
   teacher: { select: { id: true, fullName: true } },
   user: { select: { id: true, fullName: true } },
   _count: { select: { homeworkResponse: true, homeworkResult: true } },
@@ -22,6 +22,12 @@ const SELECT_HOMEWORK = {
 @Injectable()
 export class HomeworkService {
   constructor(private prisma: PrismaService) {}
+
+  private buildPagination(page?: number, limit?: number) {
+    const safePage = Number.isFinite(page) && page && page > 0 ? Math.floor(page) : 1;
+    const safeLimit = Number.isFinite(limit) && limit && limit > 0 ? Math.min(Math.floor(limit), 100) : 10;
+    return { page: safePage, limit: safeLimit, skip: (safePage - 1) * safeLimit };
+  }
 
   async create(dto: CreateHomeworkDto) {
     const lesson = await this.prisma.lesson.findUnique({ where: { id: dto.lessonId } });
@@ -53,21 +59,92 @@ export class HomeworkService {
     };
   }
 
-  async findAll(lessonId?: number, studentId?: number) {
-    const homeworks = await this.prisma.homework.findMany({
-      where: lessonId ? { lessonId } : undefined,
-      select: {
-        ...SELECT_HOMEWORK,
-        ...(studentId ? {
-          homeworkResponse: {
-            where: { studentId },
-            select: { id: true, status: true, file: true, url: true, title: true, created_at: true },
+  async findAll(params?: {
+    lessonId?: number;
+    studentId?: number;
+    groupId?: number;
+    teacherId?: number;
+    page?: number;
+    limit?: number;
+    search?: string;
+  }) {
+    const { lessonId, studentId, groupId, teacherId, page, limit, search } = params || {};
+    const usePagination = page !== undefined || limit !== undefined || !!search;
+
+    const lessonWhere: any = {
+      ...(groupId ? { groupId } : {}),
+    };
+
+    if (studentId) {
+      lessonWhere.group = {
+        studentGroup: {
+          some: {
+            studentId,
+            status: 'ACTIVE',
           },
-        } : {}),
+        },
+      };
+    }
+
+    const where: any = {
+      ...(lessonId ? { lessonId } : {}),
+      ...((groupId || studentId) ? { lesson: lessonWhere } : {}),
+      ...(teacherId ? { teacherId } : {}),
+    };
+
+    if (search?.trim()) {
+      const q = search.trim();
+      where.OR = [
+        { title: { contains: q, mode: 'insensitive' } },
+        { lesson: { title: { contains: q, mode: 'insensitive' } } },
+        { lesson: { group: { name: { contains: q, mode: 'insensitive' } } } },
+      ];
+    }
+
+    const select: any = {
+      ...SELECT_HOMEWORK,
+      ...(studentId
+        ? {
+            homeworkResponse: {
+              where: { studentId },
+              select: { id: true, status: true, file: true, url: true, title: true, created_at: true },
+            },
+          }
+        : {}),
+    };
+
+    if (!usePagination) {
+      return this.prisma.homework.findMany({
+        where,
+        select,
+        orderBy: { created_at: 'desc' },
+      });
+    }
+
+    const { page: safePage, limit: safeLimit, skip } = this.buildPagination(page, limit);
+    const [total, data] = await Promise.all([
+      this.prisma.homework.count({ where }),
+      this.prisma.homework.findMany({
+        where,
+        skip,
+        take: safeLimit,
+        select,
+        orderBy: { created_at: 'desc' },
+      }),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / safeLimit));
+    return {
+      data,
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages,
+        hasNext: safePage < totalPages,
+        hasPrev: safePage > 1,
       },
-      orderBy: { created_at: 'desc' },
-    });
-    return homeworks;
+    };
   }
 
   async findOne(id: number) {
@@ -90,6 +167,8 @@ export class HomeworkService {
             id: true,
             title: true,
             score: true,
+            xp: true,
+            coin: true,
             status: true,
             created_at: true,
             student: { select: { id: true, fullName: true } },
@@ -160,7 +239,16 @@ export class HomeworkService {
     // Also fetch results for this homework
     const results = await this.prisma.homeworkResult.findMany({
       where: { homeworkId: id },
-      select: { id: true, studentId: true, score: true, status: true, title: true, created_at: true },
+      select: {
+        id: true,
+        studentId: true,
+        score: true,
+        xp: true,
+        coin: true,
+        status: true,
+        title: true,
+        created_at: true,
+      },
     });
     const resultMap = new Map(results.map((r) => [r.studentId, r]));
 

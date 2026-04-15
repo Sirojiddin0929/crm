@@ -7,13 +7,14 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBody, ApiCookieAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiCookieAuth, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { multerConfig } from '../common/upload/multer.config';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -58,8 +59,52 @@ export class TeachersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
   @ApiOperation({ summary: "Barcha o'qituvchilarni ko'rish" })
-  findAll() {
-    return this.teachersService.findAll();
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.teachersService.findAll({
+      page: page ? +page : undefined,
+      limit: limit ? +limit : undefined,
+      search,
+      status,
+    });
+  }
+
+  @Get('summary')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
+  @ApiOperation({ summary: "O'qituvchilar bo'yicha umumiy aggregate summary" })
+  getSummary() {
+    return this.teachersService.getSummary();
+  }
+
+  @Get('search-summary')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
+  @ApiOperation({ summary: "Qidiruv + summary + pagination bilan o'qituvchilar ro'yxati" })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  getSearchSummary(
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.teachersService.getSearchSummary({
+      search,
+      status,
+      page: page ? +page : undefined,
+      limit: limit ? +limit : undefined,
+    });
   }
 
   @Get(':id')

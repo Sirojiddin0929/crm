@@ -20,6 +20,12 @@ const SELECT_VIDEO = {
 @Injectable()
 export class LessonVideosService {
   constructor(private prisma: PrismaService) {}
+
+  private buildPagination(page?: number, limit?: number) {
+    const safePage = Number.isFinite(page) && page && page > 0 ? Math.floor(page) : 1;
+    const safeLimit = Number.isFinite(limit) && limit && limit > 0 ? Math.min(Math.floor(limit), 100) : 10;
+    return { page: safePage, limit: safeLimit, skip: (safePage - 1) * safeLimit };
+  }
  
   async create(dto: CreateLessonVideoDto, filename: string,size:number) {
     const lesson = await this.prisma.lesson.findUnique({ where: { id: dto.lessonId } });
@@ -28,7 +34,14 @@ export class LessonVideosService {
     if (!filename) throw new BadRequestException('Video fayl yuklanmadi');
  
     const video = await this.prisma.lessonVideo.create({
-      data: { ...dto, file: filename ,size},
+      data: {
+        ...dto,
+        title: dto.title?.trim() || filename,
+        teacherId: dto.teacherId ?? lesson.teacherId ?? null,
+        userId: dto.userId ?? lesson.userId ?? null,
+        file: filename,
+        size,
+      },
       select: SELECT_VIDEO,
     });
  
@@ -39,15 +52,70 @@ export class LessonVideosService {
     };
   }
  
-  async findAll(lessonId?: number) {
+  async findAll(params?: {
+    lessonId?: number;
+    groupId?: number;
+    courseId?: number;
+    teacherId?: number;
+    page?: number;
+    limit?: number;
+    search?: string;
+  }) {
+    const { lessonId, groupId, courseId, teacherId, page, limit, search } = params || {};
+    const usePagination = page !== undefined || limit !== undefined || !!search;
     const baseUrl = process.env.APP_URL ?? 'http://localhost:4000';
-    const videos = await this.prisma.lessonVideo.findMany({
-      where: lessonId ? { lessonId } : undefined,
-      select: SELECT_VIDEO,
-      orderBy: { created_at: 'desc' },
-    });
-    // ✅ FIX: har bir videoga fileUrl qo'shildi
-    return videos.map(v => ({ ...v, fileUrl: `${baseUrl}/uploads/${v.file}` }));
+    const lessonWhere: any = {
+      ...(groupId ? { groupId } : {}),
+      ...(courseId ? { group: { courseId } } : {}),
+    };
+
+    const where: any = {
+      ...(lessonId ? { lessonId } : {}),
+      ...(teacherId ? { teacherId } : {}),
+      ...((groupId || courseId) ? { lesson: lessonWhere } : {}),
+    };
+
+    if (search?.trim()) {
+      const q = search.trim();
+      where.OR = [
+        { title: { contains: q, mode: 'insensitive' } },
+        { lesson: { title: { contains: q, mode: 'insensitive' } } },
+      ];
+    }
+
+    if (!usePagination) {
+      const videos = await this.prisma.lessonVideo.findMany({
+        where,
+        select: SELECT_VIDEO,
+        orderBy: { created_at: 'desc' },
+      });
+      return videos.map(v => ({ ...v, fileUrl: `${baseUrl}/uploads/${v.file}` }));
+    }
+
+    const { page: safePage, limit: safeLimit, skip } = this.buildPagination(page, limit);
+    const [total, videos] = await Promise.all([
+      this.prisma.lessonVideo.count({ where }),
+      this.prisma.lessonVideo.findMany({
+        where,
+        skip,
+        take: safeLimit,
+        select: SELECT_VIDEO,
+        orderBy: { created_at: 'desc' },
+      }),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / safeLimit));
+    return {
+      data: videos.map(v => ({ ...v, fileUrl: `${baseUrl}/uploads/${v.file}` })),
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages,
+        hasNext: safePage < totalPages,
+        hasPrev: safePage > 1,
+      },
+    };
   }
  
   async findOne(id: number) {
@@ -61,11 +129,15 @@ export class LessonVideosService {
     return { ...video, fileUrl: `${baseUrl}/uploads/${video.file}` };
   }
  
-  async update(id: number, dto: UpdateLessonVideoDto) {
+  async update(id: number, dto: UpdateLessonVideoDto, filename?: string, size?: number) {
     await this.findOne(id);
     const video = await this.prisma.lessonVideo.update({
       where: { id },
-      data: { ...dto },
+      data: {
+        ...dto,
+        ...(filename ? { file: filename } : {}),
+        ...(size ? { size } : {}),
+      },
       select: SELECT_VIDEO,
     });
     return { message: "Video ma'lumotlari yangilandi", video };

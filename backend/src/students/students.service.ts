@@ -20,6 +20,14 @@
     created_at: true,
     updated_at: true,
   };
+  const SELECT_STUDENT_COMPACT = {
+    id: true,
+    fullName: true,
+    email: true,
+    photo: true,
+    status: true,
+    created_at: true,
+  };
 
   @Injectable()
   export class StudentsService {
@@ -29,26 +37,29 @@
       private jwt:JwtService
     ) {}
 
-    private generatePassword(length = 12): string {
-      const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-      const lower = 'abcdefghijklmnopqrstuvwxyz';
-      const digits = '0123456789';
-      const symbols = '!@#$%^&*()-_=+';
-      const all = upper + lower + digits + symbols;
+    private buildPagination(page?: number, limit?: number) {
+      const safePage = Number.isFinite(page) && page && page > 0 ? Math.floor(page) : 1;
+      const safeLimit = Number.isFinite(limit) && limit && limit > 0 ? Math.min(Math.floor(limit), 100) : 10;
+      return { page: safePage, limit: safeLimit, skip: (safePage - 1) * safeLimit };
+    }
 
-      const password =
-        upper[Math.floor(Math.random() * upper.length)] +
-        lower[Math.floor(Math.random() * lower.length)] +
-        digits[Math.floor(Math.random() * digits.length)] +
-        symbols[Math.floor(Math.random() * symbols.length)] +
-        Array.from({ length: length - 4 }, () =>
-          all[Math.floor(Math.random() * all.length)],
-        ).join('');
+    private buildWhere(search?: string, status?: string) {
+      const q = search?.trim();
+      const normalizedStatus = status?.toUpperCase();
+      const where: any = {};
 
-      return password
-        .split('')
-        .sort(() => Math.random() - 0.5)
-        .join('');
+      if (q) {
+        where.OR = [
+          { fullName: { contains: q, mode: 'insensitive' } },
+          { email: { contains: q, mode: 'insensitive' } },
+        ];
+      }
+
+      if (normalizedStatus && ['ACTIVE', 'INACTIVE', 'FREEZE'].includes(normalizedStatus)) {
+        where.status = normalizedStatus;
+      }
+
+      return where;
     }
 
     
@@ -60,8 +71,7 @@
         throw new BadRequestException("Bu email allaqachon ro'yxatdan o'tgan");
       }
 
-      const plainPassword = this.generatePassword();
-      const hashedPassword = await bcrypt.hash(plainPassword, 10);
+      const hashedPassword = await bcrypt.hash(dto.password, 10);
 
       const student = await this.prisma.student.create({
         data: {
@@ -73,10 +83,8 @@
         select: SELECT_STUDENT,
       });
 
-      await this.mail.sendCredentials(dto.email, dto.fullName, plainPassword);
-
       return {
-        message: `O'quvchi qo'shildi. Login va parol ${dto.email} manziliga yuborildi.`,
+        message: `O'quvchi qo'shildi.`,
         student,
       };
     }
@@ -116,25 +124,147 @@
     }
 
     
-    async findAll(){
-      return this.prisma.student.findMany(({
-        select:{
-          ...SELECT_STUDENT,
-          StudentGroups:{
-            select:{
-              status:true,
-              group:{
-                select:{
-                  id:true,
-                  name:true,
-                  status:true
+    async findAll(params?: { page?: number; limit?: number; search?: string; status?: string; compact?: boolean }) {
+      const { page, limit, search, status, compact } = params || {};
+      const usePagination = page !== undefined || limit !== undefined || !!search || !!status;
+      const where = this.buildWhere(search, status);
+
+      if (!usePagination) {
+        return this.prisma.student.findMany({
+          select: compact
+            ? SELECT_STUDENT_COMPACT
+            : {
+                ...SELECT_STUDENT,
+                StudentGroups: {
+                  select: {
+                    status: true,
+                    group: {
+                      select: {
+                        id: true,
+                        name: true,
+                        status: true,
+                      },
+                    },
+                  },
                 },
+              },
+          orderBy: { created_at: 'desc' },
+        });
+      }
+
+      const { page: safePage, limit: safeLimit, skip } = this.buildPagination(page, limit);
+      const [total, data] = await Promise.all([
+        this.prisma.student.count({ where }),
+        this.prisma.student.findMany({
+          where,
+          skip,
+          take: safeLimit,
+          select: compact
+            ? SELECT_STUDENT_COMPACT
+            : {
+                ...SELECT_STUDENT,
+                StudentGroups: {
+                  select: {
+                    status: true,
+                    group: {
+                      select: {
+                        id: true,
+                        name: true,
+                        status: true,
+                      },
+                    },
+                  },
+                },
+              },
+          orderBy: { created_at: 'desc' },
+        }),
+      ]);
+
+      const totalPages = Math.max(1, Math.ceil(total / safeLimit));
+      return {
+        data,
+        pagination: {
+          page: safePage,
+          limit: safeLimit,
+          total,
+          totalPages,
+          hasNext: safePage < totalPages,
+          hasPrev: safePage > 1,
+        },
+      };
+    }
+
+    async getSummary() {
+      const [total, linkedStudents, active, inactive, freeze] = await Promise.all([
+        this.prisma.student.count(),
+        this.prisma.studentGroup.findMany({
+          distinct: ['studentId'],
+          select: { studentId: true },
+        }),
+        this.prisma.student.count({ where: { status: 'ACTIVE' } }),
+        this.prisma.student.count({ where: { status: 'INACTIVE' } }),
+        this.prisma.student.count({ where: { status: 'FREEZE' } }),
+      ]);
+
+      return {
+        total,
+        withGroups: linkedStudents.length,
+        withoutGroups: Math.max(0, total - linkedStudents.length),
+        byStatus: {
+          ACTIVE: active,
+          INACTIVE: inactive,
+          FREEZE: freeze,
+        },
+      };
+    }
+
+    async getSearchSummary(params?: { search?: string; status?: string; page?: number; limit?: number }) {
+      const where = this.buildWhere(params?.search, params?.status);
+      const { page, limit, skip } = this.buildPagination(params?.page, params?.limit);
+
+      const [total, active, inactive, freeze, items] = await Promise.all([
+        this.prisma.student.count({ where }),
+        this.prisma.student.count({ where: { ...where, status: 'ACTIVE' } }),
+        this.prisma.student.count({ where: { ...where, status: 'INACTIVE' } }),
+        this.prisma.student.count({ where: { ...where, status: 'FREEZE' } }),
+        this.prisma.student.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { created_at: 'desc' },
+          select: {
+            ...SELECT_STUDENT,
+            StudentGroups: {
+              select: {
+                status: true,
+                group: { select: { id: true, name: true, status: true } },
               },
             },
           },
+        }),
+      ]);
+
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+      return {
+        summary: {
+          query: params?.search?.trim() || '',
+          total,
+          byStatus: {
+            ACTIVE: active,
+            INACTIVE: inactive,
+            FREEZE: freeze,
+          },
         },
-        orderBy:{created_at:'desc'},
-      }))
+        data: items,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1,
+        },
+      };
     }
 
   

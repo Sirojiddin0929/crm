@@ -31,6 +31,18 @@
 $ npm install
 ```
 
+## Local DB (Neon'dan ko'chirish)
+
+1. Local PostgreSQL'da `crm_local` database yarating.
+2. `backend/.env` ichida `DATABASE_URL` local ulanishga qaraganini tekshiring.
+3. Neon'dagi mavjud data'ni localga ko'chirish:
+
+```bash
+$ npm run db:sync-neon-to-local
+```
+
+Bu komanda `NEON_DATABASE_URL` dagi barcha jadvallarni local `DATABASE_URL` ga nusxalaydi.
+
 ## Compile and run the project
 
 ```bash

@@ -9,13 +9,14 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBody, ApiCookieAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiCookieAuth, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { multerConfig } from '../common/upload/multer.config';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -83,8 +84,55 @@ export class StudentsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
   @ApiOperation({ summary: "Barcha o'quvchilarni ko'rish" })
-  findAll() {
-    return this.studentsService.findAll();
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({ name: 'compact', required: false, type: Boolean, description: 'Yengil (minimal) javob formati' })
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('compact') compact?: string,
+  ) {
+    return this.studentsService.findAll({
+      page: page ? +page : undefined,
+      limit: limit ? +limit : undefined,
+      search,
+      status,
+      compact: compact === 'true' || compact === '1',
+    });
+  }
+
+  @Get('summary')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
+  @ApiOperation({ summary: "O'quvchilar bo'yicha umumiy aggregate summary" })
+  getSummary() {
+    return this.studentsService.getSummary();
+  }
+
+  @Get('search-summary')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
+  @ApiOperation({ summary: "Qidiruv + summary + pagination bilan o'quvchilar ro'yxati" })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  getSearchSummary(
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.studentsService.getSearchSummary({
+      search,
+      status,
+      page: page ? +page : undefined,
+      limit: limit ? +limit : undefined,
+    });
   }
 
   @Get(':id')

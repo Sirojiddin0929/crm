@@ -52,17 +52,32 @@ export class HomeworkController {
 
   @Get()
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR, Role.TEACHER, Role.STUDENT)
-  @ApiOperation({ summary: "Barcha vazifalarni ko'rish (lessonId/studentId bo'yicha filter qilish mumkin)" })
+  @ApiOperation({ summary: "Barcha vazifalarni ko'rish (lessonId/studentId/groupId/teacherId bo'yicha filter qilish mumkin)" })
   @ApiQuery({ name: 'lessonId', required: false, type: Number })
   @ApiQuery({ name: 'studentId', required: false, type: Number })
+  @ApiQuery({ name: 'groupId', required: false, type: Number })
+  @ApiQuery({ name: 'teacherId', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
   findAll(
     @Query('lessonId') lessonId?: string,
     @Query('studentId') studentId?: string,
+    @Query('groupId') groupId?: string,
+    @Query('teacherId') teacherId?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.homeworkService.findAll(
-      lessonId ? +lessonId : undefined,
-      studentId ? +studentId : undefined,
-    );
+    return this.homeworkService.findAll({
+      lessonId: lessonId ? +lessonId : undefined,
+      studentId: studentId ? +studentId : undefined,
+      groupId: groupId ? +groupId : undefined,
+      teacherId: teacherId ? +teacherId : undefined,
+      search,
+      page: page ? +page : undefined,
+      limit: limit ? +limit : undefined,
+    });
   }
 
   @Get(':id')

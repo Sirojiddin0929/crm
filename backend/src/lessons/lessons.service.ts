@@ -23,6 +23,12 @@ const SELECT_LESSON = {
 export class LessonsService {
   constructor(private prisma: PrismaService) {}
 
+  private buildPagination(page?: number, limit?: number) {
+    const safePage = Number.isFinite(page) && page && page > 0 ? Math.floor(page) : 1;
+    const safeLimit = Number.isFinite(limit) && limit && limit > 0 ? Math.min(Math.floor(limit), 100) : 10;
+    return { page: safePage, limit: safeLimit, skip: (safePage - 1) * safeLimit };
+  }
+
   async create(dto: CreateLessonDto) {
   const group = await this.prisma.group.findUnique({
     where: { id: dto.groupId },
@@ -50,15 +56,56 @@ export class LessonsService {
   };
 }
 
-  async findAll(groupId?: number, teacherId?: number) {
-    return this.prisma.lesson.findMany({
-      where: {
-        ...(groupId ? { groupId } : {}),
-        ...(teacherId ? { teacherId } : {}),
+  async findAll(params?: { groupId?: number; teacherId?: number; page?: number; limit?: number; search?: string }) {
+    const { groupId, teacherId, page, limit, search } = params || {};
+    const usePagination = page !== undefined || limit !== undefined || !!search;
+
+    const where: any = {
+      ...(groupId ? { groupId } : {}),
+      ...(teacherId ? { teacherId } : {}),
+    };
+
+    if (search?.trim()) {
+      const q = search.trim();
+      where.OR = [
+        { title: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
+        { group: { name: { contains: q, mode: 'insensitive' } } },
+      ];
+    }
+
+    if (!usePagination) {
+      return this.prisma.lesson.findMany({
+        where,
+        select: SELECT_LESSON,
+        orderBy: { created_at: 'desc' },
+      });
+    }
+
+    const { page: safePage, limit: safeLimit, skip } = this.buildPagination(page, limit);
+    const [total, data] = await Promise.all([
+      this.prisma.lesson.count({ where }),
+      this.prisma.lesson.findMany({
+        where,
+        skip,
+        take: safeLimit,
+        select: SELECT_LESSON,
+        orderBy: { created_at: 'desc' },
+      }),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / safeLimit));
+    return {
+      data,
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages,
+        hasNext: safePage < totalPages,
+        hasPrev: safePage > 1,
       },
-      select: SELECT_LESSON,
-      orderBy: { created_at: 'desc' },
-    });
+    };
   }
 
   async findOne(id: number) {

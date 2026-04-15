@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-import {IsEmail,IsInt,IsNotEmpty,IsString,Min,} from 'class-validator';
+import {IsEmail,IsInt,IsNotEmpty,IsString,Min, MinLength,} from 'class-validator';
 
 export class CreateTeacherDto {
   @ApiProperty({ example: 'Jasur Toshmatov' })
@@ -22,6 +22,9 @@ export class CreateTeacherDto {
   @Min(0)
   experience: number;
 
-  
+  @ApiProperty({ example: 'StrongPass123', description: 'Admin tomonidan beriladigan parol' })
+  @IsString()
+  @MinLength(6)
+  password: string;
 
 }

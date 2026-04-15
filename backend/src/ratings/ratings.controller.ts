@@ -6,9 +6,10 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { Roles } from '../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -33,8 +34,28 @@ export class RatingsController {
   @Get()
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
   @ApiOperation({ summary: "Barcha reytinglarni ko'rish" })
-  findAll() {
-    return this.ratingsService.findAll();
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'teacherId', required: false, type: Number })
+  @ApiQuery({ name: 'lessonId', required: false, type: Number })
+  @ApiQuery({ name: 'studentId', required: false, type: Number })
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('teacherId') teacherId?: string,
+    @Query('lessonId') lessonId?: string,
+    @Query('studentId') studentId?: string,
+  ) {
+    return this.ratingsService.findAll({
+      page: page ? +page : undefined,
+      limit: limit ? +limit : undefined,
+      search,
+      teacherId: teacherId ? +teacherId : undefined,
+      lessonId: lessonId ? +lessonId : undefined,
+      studentId: studentId ? +studentId : undefined,
+    });
   }
 
   @Get('student/:studentId')
@@ -45,8 +66,8 @@ export class RatingsController {
   }
 
   @Get('teacher/:teacherId')
-  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR, Role.TEACHER)
-  @ApiOperation({ summary: "O'qituvchi bo'yicha reytinglarni ko'rish (o'rtacha bilan)" })
+  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
+  @ApiOperation({ summary: "O'qituvchi bo'yicha reytinglarni ko'rish (faqat adminlar uchun)" })
   findByTeacher(@Param('teacherId', ParseIntPipe) teacherId: number) {
     return this.ratingsService.findByTeacher(teacherId);
   }
